@@ -1,0 +1,41 @@
+[package]
+name = "xalen-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Python bindings (PyO3) for XALEN Ephemeris — pip install xalen"
+keywords = ["python", "ephemeris", "astrology", "pyo3", "astronomy"]
+categories = ["science", "api-bindings"]
+
+[lib]
+name = "xalen"
+crate-type = ["cdylib", "rlib"]
+# The `///` docs on these bindings are PYTHON docstrings (PyO3 exposes them as
+# `__doc__`), written in RST/Google style with Python examples — they are not
+# Rust and must not be compiled as Rust doctests.
+doctest = false
+
+[dependencies]
+# `extension-module` tells PyO3 NOT to link libpython (the host interpreter
+# resolves symbols at import). It MUST be enabled for the published wheel
+# (`maturin build --features extension-module`) but OFF for `cargo test`, or the
+# test binary cannot link. Made optional + default-off so the workspace tests
+# cleanly; CI/maturin opt in via `--features extension-module`.
+pyo3 = { version = "0.28" }
+xalen-ephem = { version = "0.5.0", path = "../xalen-ephem" }
+xalen-time = { version = "0.5.0", path = "../xalen-time" }
+xalen-ayanamsa = { version = "0.5.0", path = "../xalen-ayanamsa" }
+xalen-vedic = { version = "0.5.0", path = "../xalen-vedic" }
+xalen-houses = { version = "0.5.0", path = "../xalen-houses" }
+xalen-stars = { version = "0.5.0", path = "../xalen-stars" }
+xalen-western = { version = "0.5.0", path = "../xalen-western" }
+xalen-numerology = { version = "0.5.0", path = "../xalen-numerology" }
+xalen-coords = { version = "0.5.0", path = "../xalen-coords" }
+
+[features]
+# Enable for the published wheel build: `maturin build --features extension-module`.
+extension-module = ["pyo3/extension-module"]
+
+[lints]
+workspace = true

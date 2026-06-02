@@ -1,0 +1,12 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/vedika-io/xalen-ephemeris/discussions
+    about: Ask questions, share ideas, and chat with the community
+  - name: 📖 Documentation
+    url: https://github.com/vedika-io/xalen-ephemeris#readme
+    about: Read the documentation, ACCURACY.md, and per-crate guides
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/vedika-io/xalen-ephemeris/security/advisories/new
+    about: Please report security issues privately, not as public issues

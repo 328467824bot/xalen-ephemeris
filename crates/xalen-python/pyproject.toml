@@ -1,0 +1,26 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "xalen"
+description = "Pure-Rust astronomical & astrology ephemeris — VSOP87 planets, Vedic/Western/KP, house systems, ayanamsa, fixed stars, numerology."
+requires-python = ">=3.8"
+license = "Apache-2.0"
+keywords = ["ephemeris", "astrology", "astronomy", "vedic", "vsop87"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/vedika-io/xalen-ephemeris"
+
+[tool.maturin]
+# `extension-module` is an OPTIONAL Cargo feature (so `cargo test` can link
+# libpython for the Rust test suite). The published wheel MUST enable it here so
+# maturin builds the extension correctly (host interpreter resolves symbols).
+features = ["extension-module"]
+manifest-path = "Cargo.toml"

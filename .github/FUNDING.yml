@@ -1,0 +1,8 @@
+# Targets for the repository "Sponsor" button.
+# `custom` accepts up to 4 URLs. Uncomment `github` once GitHub Sponsors is set
+# up for the org/maintainer, and fill in the handle.
+
+# github: [vedika-io]
+custom:
+  - "https://vedika.io"
+  - "https://github.com/vedika-io/xalen-ephemeris/blob/main/COMMERCIAL_LICENSE.md"

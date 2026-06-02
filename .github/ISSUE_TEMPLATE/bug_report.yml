@@ -1,0 +1,131 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior (including an accuracy discrepancy)
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please fill out the sections below so we can reproduce and fix it.
+
+        Before submitting, please check:
+        - You're on the latest released version
+        - The issue hasn't already been reported (search existing issues)
+        - This is a bug, not a feature request or a usage question (use Discussions for those)
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight Checklist
+      options:
+        - label: I have searched existing issues and this hasn't been reported yet
+          required: true
+        - label: This is a single bug report (separate reports for separate bugs)
+          required: true
+        - label: I am using the latest version
+          required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What's Wrong?
+      description: Describe what's happening that shouldn't be. For an accuracy discrepancy, give the body/system, the input (date, time, location), the value XALEN returns, and the reference value (with the source).
+      placeholder: |
+        computing the Moon longitude for 2000-01-01 12:00 UT returns X, but Swiss Ephemeris / JPL Horizons gives Y (delta Z").
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What Should Happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: A minimal code example anyone can run. Include the exact inputs.
+      placeholder: |
+        ```rust
+        let almanac = Almanac::default_vedic();
+        // ...
+        ```
+      render: rust
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_output
+    attributes:
+      label: Error Messages / Logs
+      description: Paste any panic message, stack trace, or relevant output.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Which version? (the crate version, e.g. from Cargo.toml or `cargo tree`)
+      placeholder: "e.g., 0.3.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: How are you using XALEN?
+      options:
+        - Rust crate (crates.io / path dependency)
+        - Python binding (xalen-python / PyO3)
+        - Node binding (xalen-node / N-API)
+        - WebAssembly (xalen-wasm)
+        - C-FFI (xalen-ffi)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the library?
+      options:
+        - Planetary positions / ephemeris
+        - Houses / ascendant / cusps
+        - Ayanamsa / sidereal
+        - Vedic / Jyotish (dasha, KP, shadbala, panchang, vargas, yoga, dosha)
+        - Western (aspects, dignities, lots, returns, progressions)
+        - Chinese (BaZi, Zi Wei, Feng Shui, Qi Men)
+        - Other traditions (Saju, Mayan, Nine Star Ki, etc.)
+        - Lunar nodes / fixed stars / numerology / I Ching
+        - Chart rendering (SVG)
+        - Build / bindings
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Windows
+        - Ubuntu/Debian Linux
+        - Other Linux
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      placeholder: Anything else that would help — config, related code, links.
+    validations:
+      required: false

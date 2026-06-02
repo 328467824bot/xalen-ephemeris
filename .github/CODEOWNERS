@@ -1,0 +1,17 @@
+# Code owners for xalen-ephemeris.
+# Requested for review on every PR, and required by the protect-main ruleset's
+# "Require review from Code Owners" rule.
+#
+# NOTE: @vedika-io/maintainers must be a real team in the vedika-io org with
+# write access, OR replace it with a personal maintainer handle (e.g. @your-user).
+# An unresolvable owner here silently disables the code-owner review requirement.
+
+*                         @vedika-io/maintainers
+
+# Accuracy- and physics-critical paths — these carry the public accuracy claims.
+/crates/xalen-ephem/      @vedika-io/maintainers
+/crates/xalen-coords/     @vedika-io/maintainers
+/crates/xalen-houses/     @vedika-io/maintainers
+/crates/xalen-ayanamsa/   @vedika-io/maintainers
+/docs/ACCURACY.md         @vedika-io/maintainers
+/CHANGELOG.md             @vedika-io/maintainers

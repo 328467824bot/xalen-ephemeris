@@ -1,0 +1,70 @@
+name: 📚 Documentation Issue
+description: Report missing, unclear, or incorrect documentation
+title: "[DOCS] "
+labels:
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the docs! Let us know what's missing or confusing.
+
+  - type: dropdown
+    id: doc_type
+    attributes:
+      label: Documentation Type
+      options:
+        - Missing documentation (feature not documented)
+        - Unclear / confusing documentation
+        - Incorrect / outdated documentation
+        - Inaccurate accuracy claim (does not match the code or a reference)
+        - Typo or formatting issue
+        - Missing code examples
+        - Broken links
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: URL or file path (e.g. README.md, docs/ACCURACY.md, a rustdoc page)
+    validations:
+      required: false
+
+  - type: input
+    id: section
+    attributes:
+      label: Section / Topic
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Documentation
+      description: Quote the current text if applicable.
+    validations:
+      required: false
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What's Wrong or Missing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested Improvement
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+    validations:
+      required: false

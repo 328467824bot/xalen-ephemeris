@@ -1,0 +1,20 @@
+[package]
+name = "xalen-coords"
+version.workspace = true
+edition.workspace = true
+# Apache-2.0 for the crate as a whole; the precession / frame-bias matrix
+# numerics in precession.rs are an independent Rust port of ERFA routines
+# (pfw06/fw2m/bi00/bp00/pmat06) and carry ERFA's BSD-3-Clause (see NOTICE).
+license = "Apache-2.0 AND BSD-3-Clause"
+repository.workspace = true
+description = "Coordinate frames, precession, nutation, and frame transforms for XALEN Ephemeris"
+keywords = ["coordinates", "precession", "nutation", "ecliptic", "astronomy"]
+categories = ["science", "mathematics"]
+
+[dependencies]
+xalen-time = { version = "0.5.0", path = "../xalen-time" }
+thiserror.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true
