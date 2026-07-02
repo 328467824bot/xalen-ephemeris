@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   two deprecated `Bound::downcast` calls to `Bound::cast` (pyo3 0.29 API).
 
 ### Added
+- **`xalen-cloud`** crate — a local-first interpretation shim. The chart is
+  computed entirely on-device (`compute_chart`, no network), and only the
+  optional interpretation step is delegated to a pluggable
+  `InterpretationProvider`. Ships an offline, network-free `OfflineInterpreter`
+  and an optional `RemoteInterpreter` (behind the `remote-http` feature) that
+  POSTs the computed chart to a configurable endpoint. The base crate is fully
+  offline and pulls in no network dependency by default. Civil birth inputs and
+  remote endpoints are validated (`from_calendar` and `RemoteInterpreter::new`
+  return `Result`; bearer tokens are refused over plain `http://`).
 - **`xalen-stars-hip-data`** crate — the Hipparcos-derived fixed-star catalogue
   (8,870 stars, CDS I/239, © ESA 1997) is now isolated in its own package,
   licensed **CC BY-NC 3.0 IGO** (non-commercial) with a `LICENSE` file and
