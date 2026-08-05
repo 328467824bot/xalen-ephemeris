@@ -1,6 +1,6 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    id("com.android.application") version "8.7.2"
+    id("org.jetbrains.kotlin.android") version "2.0.21"
 }
 
 // ───────────────────────── Signing config (private data) ─────────────────────────
@@ -75,15 +75,15 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // 签名配置：从 keystore.properties 读取（CI 由 Secrets 注入，本地用本地 keystore）
-            // keystore.properties 路径优先用 KEYSTORE_PROPS_PATH 环境变量（CI 用），
-            // 否则用项目根目录的 keystore.properties（本地开发，不入库）
-            signingConfig = tryReadSigningConfig()?.let { signingConfigs.maybeCreate("release").apply {
-                storeFile = it.storeFile
-                storePassword = it.storePassword
-                keyAlias = it.keyAlias
-                keyPassword = it.keyPassword
-            } }
+            // 签名配置：从 keystore.properties 读取
+            signingConfig = tryReadSigningConfig()?.let { cfg ->
+                signingConfigs.maybeCreate("release").apply {
+                    storeFile = cfg.storeFile
+                    storePassword = cfg.storePassword
+                    keyAlias = cfg.keyAlias
+                    keyPassword = cfg.keyPassword
+                }
+            }
         }
     }
 
@@ -104,9 +104,9 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.ktx)
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.activity:activity-ktx:1.9.3")
     // 无需 Compose / Room / 网络库 — 全部 UI 在 WebView 内
 }
 
@@ -114,8 +114,6 @@ dependencies {
 //
 // 把 web-app/ 目录的内容同步到 src/main/assets/web/ 下，使 WebView 能通过
 // file:///android_asset/web/index.html 访问。
-//
-// 同步在 preBuild 阶段执行，CI 注入 XALEN WASM 后会自动被同步进去。
 
 val webAppSourceDir = layout.projectDirectory.dir("../../web-app")
 val webAppTargetDir = layout.projectDirectory.dir("src/main/assets/web")
@@ -125,7 +123,6 @@ val syncWebApp by tasks.registering(Sync::class) {
     description = "Sync web-app/ → src/main/assets/web/"
 
     from(webAppSourceDir) {
-        // 排除开发态文件
         exclude("**/.DS_Store")
         exclude("**/node_modules/**")
         exclude("**/.git/**")
@@ -138,7 +135,6 @@ tasks.matching { it.name == "preBuild" }.configureEach {
     dependsOn("syncWebApp")
 }
 
-// 清理时一并清掉生成的 assets/web/ 内容（保留 .gitkeep）
 tasks.matching { it.name == "clean" }.configureEach {
     doLast {
         webAppTargetDir.asFile.listFiles()?.forEach { f ->
