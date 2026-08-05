@@ -305,27 +305,36 @@
     // 4. 7 大统治星 (Ruling Planets, RP)
     const rp = computeRulingPlanets(asc, planets, jdUt1);
 
-    // 5. CSL 分析表（每宫的 CSL 位置 + 主宰宫 + 星宿主 + 星宿主位置）
+    // 5. Significators（征象星，XALEN 风格 — 每颗行星主宰/落入的宫位）
+    const significators = computeSignificators(houses, planets);
+
+    // 6. CSL 分析表（每宫的 CSL 位置 + 主宰宫 + 星宿主 + 星宿主位置）
     const cslAnalysis = computeCslAnalysis(houses, planets);
 
-    // 6. Rahu/Ketu 五重代理分析
+    // 7. House Promises（每宫许诺 Positive/Negative/Mixed，XALEN HousePromise）
+    const housePromises = computeHousePromises(houses, significators);
+
+    // 8. Event Promises（8 类人生事件许诺，XALEN KpEvent）
+    const eventPromises = computeEventPromises(houses, significators);
+
+    // 9. Rahu/Ketu 五重代理分析
     const rahuKetuProxy = computeRahuKetuProxy(planets, houses);
 
-    // 7. 双轨相位（Vedic + Western）
+    // 10. 双轨相位（Vedic + Western）
     const aspects = computeAspects(planets);
 
-    // 8. 行星状态（逆行/燃烧/速度/距日）
+    // 11. 行星状态（逆行/燃烧/速度/距日）
     const planetStates = computePlanetStates(planets);
 
-    // 9. 行星尊贵状态（绝对 + 相对 Naisargika Maitri）
+    // 12. 行星尊贵状态（绝对 + 相对 Naisargika Maitri）
     const planetDignity = computePlanetDignity(planets);
 
-    // 10. Vimshottari 推运（三级）
+    // 13. Vimshottari 推运（三级）
     const moonDeg = planets.Moon.longitude;
     const fullDasha = xalen.vimshottariDasha(moonDeg, jdUt1);
     const currentDasha = findCurrentDasha(fullDasha, jdUt1);
 
-    // 11. Panchang
+    // 14. Panchang
     const panchang = xalen.panchangJson(jdUt1, ayaId);
 
     // 12. 数字起卦映射（KP Horary 1-249）
@@ -348,7 +357,10 @@
       planets,
       houses,
       rulingPlanets: rp,
+      significators,
       cslAnalysis,
+      housePromises,
+      eventPromises,
       rahuKetuProxy,
       aspects,
       planetStates,
@@ -483,6 +495,90 @@
         starLordHouse: starLordHouse || '—'
       };
     });
+  }
+
+  // ───────────────────────── Significators（征象星，XALEN 风格）─────────────────────────
+  //
+  // 来自 XALEN 库 crates/xalen-vedic/src/kp.rs 的 compute_significators
+  // 每颗行星返回：
+  //   - planet: 行星名
+  //   - signifiedHouses: 该行星主宰/落入的宫位列表
+  //   - strengthOrder: 按强度排序的 (house, type) 对
+  //
+  // KP 强度顺序（XALEN）：StarLord > Occupant > Owner > Aspecting
+
+  function computeSignificators(houses, planets) {
+    const SIGNIF_TYPES = ['StarLord', 'Occupant', 'Owner', 'Aspecting'];
+    const result = [];
+
+    for (const planetName of PLANET_NAMES) {
+      const p = planets[planetName];
+      if (!p) continue;
+
+      const signifiedHouses = new Set();
+      const strengthOrder = [];
+
+      // 1. StarLord: 行星所在星宿的主星主宰的宫位 + 该主星落入的宫位
+      const starLord = p.nakshatraLord;
+      if (starLord && starLord !== planetName) {
+        // starLord 主宰的宫位
+        for (const h of houses) {
+          if (h.lord === starLord) {
+            signifiedHouses.add(h.number);
+            strengthOrder.push([h.number, 'StarLord']);
+          }
+        }
+        // starLord 落入的宫位
+        const starLordPlanet = planets[starLord];
+        if (starLordPlanet) {
+          for (const h of houses) {
+            if (h.occupants.includes(starLord)) {
+              signifiedHouses.add(h.number);
+              strengthOrder.push([h.number, 'StarLord']);
+            }
+          }
+        }
+      }
+
+      // 2. Occupant: 行星本身落入的宫位
+      for (const h of houses) {
+        if (h.occupants.includes(planetName)) {
+          signifiedHouses.add(h.number);
+          strengthOrder.push([h.number, 'Occupant']);
+        }
+      }
+
+      // 3. Owner: 行星所在星座的星座主主宰的宫位（即行星落宫的星座主）
+      const owner = p.rashiLord;
+      if (owner && owner !== planetName) {
+        for (const h of houses) {
+          if (h.lord === owner) {
+            signifiedHouses.add(h.number);
+            strengthOrder.push([h.number, 'Owner']);
+          }
+        }
+      }
+
+      // 4. Aspecting: 该行星用 Vedic Drishti 相位的宫位
+      const aspects = VEDIC_ASPECTS[planetName] || [7];
+      for (const asp of aspects) {
+        const toSign = (p.rashi + asp - 1) % 12;
+        for (const h of houses) {
+          if (h.sign === toSign) {
+            signifiedHouses.add(h.number);
+            strengthOrder.push([h.number, 'Aspecting']);
+          }
+        }
+      }
+
+      result.push({
+        planet: planetName,
+        signifiedHouses: [...signifiedHouses].sort((a, b) => a - b),
+        strengthOrder
+      });
+    }
+
+    return result;
   }
 
   // ───────────────────────── Rahu/Ketu 五重代理 ─────────────────────────
@@ -693,85 +789,164 @@
 
   // ───────────────────────── KSK 249 Horary Number 表 ─────────────────────────
   //
-  // KSK 标准 1-249 Horary Number 表（来自 KP Reader Vol.1）：
-  //   - 27 nakshatras × 9 sub-lords = 243 个标准 sub
-  //   - 加上 Ashwini 之前的 3 个虚拟 sub + Revati 之后的 3 个虚拟 sub = 249
-  //   - 数字 N → 第 N 个 sub 的起点（sidereal 度数）
+  // 用 XALEN 库的 kp.rs 同款算法（来自 crates/xalen-vedic/src/kp.rs 的 kp_segment_starts()）：
+  //   1. 生成 243 个基础 sub（27 nakshatras × 9 sub-lords，按 Vimshottari 比例）
+  //   2. 在星座边界（每 30°）切分跨越的 sub，得到 249 个 segment
+  //   3. 数字 N = 第 N 个 segment 的起点（sidereal 度数）
   //
-  // 验证：数字 123 → Chitra nakshatra / Jupiter sub 起点 = sidereal 176.1111° = Virgo 26°06'40"
-  // （与原版 HTML 应用输出一致）
+  // 验证（与 XALEN 测试断言一致）：
+  //   - 总共 249 个 segment
+  //   - starts[0] = 0.0 (Aries 0°)
+  //   - KP#1 = 0°, KP#249 = 最后一段
+  //   - KP#123 = 176.1111° = Virgo 26°06'40" (Chitra/Jupiter sub 起点)
 
   const KSK_249_TABLE = (function() {
     const nakSize = 360.0 / 27;
-    const table = [];
-    // 前 3 个：Ashwini 之前的虚拟 sub（来自 Ketu dasha 在 Ashwini 之前的部分）
-    // Ketu dasha 7年 = 21°，从 -21° 到 0°
-    // 3 个虚拟 sub 起点：-21°, -21° + Ketu sub, -21° + Ketu sub + Venus sub
-    // 但简化处理：前 3 个虚拟 sub 用 0° 之前的等分
-    // 实际 KSK 表前 3 个数字对应 Revati nakshatra 末尾的 sub
-    // Revati nak lord = Mercury, sub 顺序: Mercury, Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn
-    // Revati 起点 = 26 * 13.3333 = 346.6667°
-    // Revati 的最后 3 个 sub: Rahu (起点 ~353°), Jupiter (~355°), Saturn (~357°)
-    // 这些 sub 跨越到 Ashwini
-    const revatiStart = 26 * nakSize;
-    const mercurySubSize = DASHA_YEARS['Mercury'] / 120 * nakSize;
-    const ketuSubSize = DASHA_YEARS['Ketu'] / 120 * nakSize;
-    const venusSubSize = DASHA_YEARS['Venus'] / 120 * nakSize;
-    const sunSubSize = DASHA_YEARS['Sun'] / 120 * nakSize;
-    const moonSubSize = DASHA_YEARS['Moon'] / 120 * nakSize;
-    const marsSubSize = DASHA_YEARS['Mars'] / 120 * nakSize;
-    const rahuSubSize = DASHA_YEARS['Rahu'] / 120 * nakSize;
-    const jupiterSubSize = DASHA_YEARS['Jupiter'] / 120 * nakSize;
-    const saturnSubSize = DASHA_YEARS['Saturn'] / 120 * nakSize;
-    // Revati 的 9 个 sub 大小（按 nak lord Mercury 顺序）
-    const revatiSubs = [
-      { lord: 'Mercury', size: mercurySubSize },
-      { lord: 'Ketu', size: ketuSubSize },
-      { lord: 'Venus', size: venusSubSize },
-      { lord: 'Sun', size: sunSubSize },
-      { lord: 'Moon', size: moonSubSize },
-      { lord: 'Mars', size: marsSubSize },
-      { lord: 'Rahu', size: rahuSubSize },
-      { lord: 'Jupiter', size: jupiterSubSize },
-      { lord: 'Saturn', size: saturnSubSize }
-    ];
-    // 前 3 个虚拟 sub = Revati 最后 3 个 sub (Rahu, Jupiter, Saturn) 的起点
-    let revatiCursor = revatiStart;
-    for (let i = 0; i < 6; i++) revatiCursor += revatiSubs[i].size;
-    // revatiCursor 现在在 Rahu sub 起点
-    table.push({ num: 1, deg: norm(revatiCursor), nakIdx: 26, subLord: 'Rahu' });
-    table.push({ num: 2, deg: norm(revatiCursor + rahuSubSize), nakIdx: 26, subLord: 'Jupiter' });
-    table.push({ num: 3, deg: norm(revatiCursor + rahuSubSize + jupiterSubSize), nakIdx: 26, subLord: 'Saturn' });
+    const EPS = 1e-6;
 
-    // 中间 243 个：标准 27 nak × 9 sub
-    let current = 0.0;  // Ashwini 起点
+    // Snap 函数：把接近 30° 倍数的值精确到边界（避免浮点误差）
+    const snap = (x) => {
+      const nearest = Math.round(x / 30.0) * 30.0;
+      if (Math.abs(x - nearest) < EPS) return nearest;
+      return x;
+    };
+
+    // Step 1: 生成 243 个基础 sub (start, end)
+    const raw = [];
+    let degree = 0.0;
     for (let nakIdx = 0; nakIdx < 27; nakIdx++) {
       const nakLord = NAK_LORDS[nakIdx % 9];
       const startSeq = NAK_LORDS.indexOf(nakLord);
-      for (let i = 0; i < 9; i++) {
-        const lord = NAK_LORDS[(startSeq + i) % 9];
-        const size = DASHA_YEARS[lord] / 120 * nakSize;
-        table.push({ num: table.length + 1, deg: norm(current), nakIdx, subLord: lord });
-        current += size;
+      for (let subI = 0; subI < 9; subI++) {
+        const lord = NAK_LORDS[(startSeq + subI) % 9];
+        const span = DASHA_YEARS[lord] / 120 * nakSize;
+        const s = degree;
+        const e = degree + span;
+        raw.push({ start: s, end: e, nakIdx, subLord: lord });
+        degree = e;
       }
     }
 
-    // 后 3 个虚拟 sub：Revati 之后的（即 Ashwini 开头的 3 个 sub，绕回）
-    // 实际 KSK 表 247-249 是 Ashwini 的前 3 个 sub（Ketu, Venus, Sun）
-    // 但因为这些已经在数字 4-6 里了，所以 247-249 实际是重复或特殊定义
-    // 简化：用 Ashwini 前 3 个 sub 起点
-    const ashwiniSubs = [
-      { lord: 'Ketu', size: ketuSubSize },
-      { lord: 'Venus', size: venusSubSize },
-      { lord: 'Sun', size: sunSubSize }
-    ];
-    let ashwiniCursor = 0.0;
-    table.push({ num: 247, deg: norm(ashwiniCursor), nakIdx: 0, subLord: 'Ketu' });
-    table.push({ num: 248, deg: norm(ashwiniCursor + ketuSubSize), nakIdx: 0, subLord: 'Venus' });
-    table.push({ num: 249, deg: norm(ashwiniCursor + ketuSubSize + venusSubSize), nakIdx: 0, subLord: 'Sun' });
+    // Step 2: 在星座边界切分，生成 249 个 segment
+    // 每个 segment 记录起点度数 + 所属 nakshatra + sub lord
+    const table = [];
+    for (const seg of raw) {
+      const s = snap(seg.start);
+      // 第一个 segment 起点
+      table.push({ num: table.length + 1, deg: s, nakIdx: seg.nakIdx, subLord: seg.subLord });
+      // 内部星座边界（30, 60, ..., 330）
+      let b = (Math.floor(s / 30.0) + 1) * 30;
+      while (b < seg.end - EPS) {
+        if (b > s + EPS) {
+          // 边界切分产生的新 segment，sub lord 不变（同一个 sub 被切成两段）
+          table.push({ num: table.length + 1, deg: b, nakIdx: seg.nakIdx, subLord: seg.subLord });
+        }
+        b += 30;
+      }
+    }
 
     return table;
   })();
+
+  // 测试用：验证 KSK 表
+  // console.log('KSK table size:', KSK_249_TABLE.length, 'first:', KSK_249_TABLE[0], 'last:', KSK_249_TABLE[248]);
+  // console.log('KP#123:', KSK_249_TABLE[122]);
+
+  // ───────────────────────── KP 事件许诺（HousePromise + KpEvent）─────────────────────────
+  //
+  // 来自 XALEN 库 crates/xalen-vedic/src/kp.rs 的 KpEvent 和 HousePromise
+  // 用于判断某个宫位的 CSL 是否"许诺"该宫位的事项（Positive/Negative/Mixed）
+  // 以及 8 类人生事件（Marriage/Job/Health/...）是否许诺
+
+  // 8 类人生事件
+  const KP_EVENTS = {
+    Marriage:     { primaryHouse: 7,  favorable: [2, 7, 11],         negating: [1, 6, 10, 12] },
+    Job:          { primaryHouse: 10, favorable: [2, 6, 10, 11],     negating: [5, 8, 12] },
+    Health:       { primaryHouse: 1,  favorable: [1, 5, 11],         negating: [6, 8, 12] },
+    ChildBirth:   { primaryHouse: 5,  favorable: [2, 5, 11],         negating: [4, 8, 12] },
+    Education:    { primaryHouse: 4,  favorable: [4, 9, 11],         negating: [3, 8, 12] },
+    ForeignTravel:{ primaryHouse: 12, favorable: [3, 9, 12],         negating: [1, 4, 10] },
+    Wealth:       { primaryHouse: 2,  favorable: [1, 2, 6, 11],      negating: [5, 8, 12] },
+    Litigation:   { primaryHouse: 6,  favorable: [1, 2, 6, 11],      negating: [5, 8, 12] }
+  };
+
+  // 每宫的许诺判定（favorable / unfavorable houses，来自 XALEN kp.rs）
+  const CUSP_FAVORABLE = {
+    1:  [1, 5, 9, 11],
+    2:  [2, 6, 10, 11],
+    3:  [3, 6, 10, 11],
+    4:  [4, 2, 11],
+    5:  [2, 5, 11],
+    6:  [1, 2, 6, 10, 11],
+    7:  [2, 7, 11],
+    8:  [1, 5, 8, 11],
+    9:  [2, 9, 11],
+    10: [2, 6, 10, 11],
+    11: [2, 3, 6, 11],
+    12: [3, 9, 12]
+  };
+  const CUSP_UNFAVORABLE = {
+    1:  [6, 8, 12],
+    2:  [5, 8, 12],
+    3:  [8, 12],
+    4:  [3, 5, 12],
+    5:  [4, 8, 12],
+    6:  [5, 11, 12],
+    7:  [1, 6, 10, 12],
+    8:  [6, 12],
+    9:  [3, 8, 12],
+    10: [5, 8, 12],
+    11: [5, 8, 12],
+    12: [1, 2, 6, 10]
+  };
+
+  /**
+   * 计算每个宫位的许诺（Positive/Negative/Mixed）
+   * 基于 CSL（宫头子主）的征象星是否落在该宫的 favorable/unfavorable 列表
+   */
+  function computeHousePromises(houses, significators) {
+    return houses.map(h => {
+      const csl = h.cuspSubLord;
+      // 找 CSL 行星的征象宫位
+      const cslSig = significators.find(s => s.planet === csl);
+      const sigHouses = cslSig ? cslSig.signifiedHouses : [];
+      const fav = CUSP_FAVORABLE[h.number] || [];
+      const unfav = CUSP_UNFAVORABLE[h.number] || [];
+      const favCount = sigHouses.filter(x => fav.includes(x)).length;
+      const unfavCount = sigHouses.filter(x => unfav.includes(x)).length;
+      let promise;
+      if (favCount > 0 && unfavCount === 0) promise = 'Positive';
+      else if (unfavCount > 0 && favCount === 0) promise = 'Negative';
+      else if (favCount > 0 && unfavCount > 0) promise = 'Mixed';
+      else promise = 'Mixed';
+      return { house: h.number, csl, promise, favCount, unfavCount };
+    });
+  }
+
+  /**
+   * 检查 8 类人生事件是否许诺
+   */
+  function computeEventPromises(houses, significators) {
+    const results = [];
+    for (const [eventName, cfg] of Object.entries(KP_EVENTS)) {
+      const primaryHouse = houses.find(h => h.number === cfg.primaryHouse);
+      if (!primaryHouse) continue;
+      const csl = primaryHouse.cuspSubLord;
+      const cslSig = significators.find(s => s.planet === csl);
+      const sigHouses = cslSig ? cslSig.signifiedHouses : [];
+      const favCount = sigHouses.filter(x => cfg.favorable.includes(x)).length;
+      const negCount = sigHouses.filter(x => cfg.negating.includes(x)).length;
+      results.push({
+        event: eventName,
+        primaryHouse: cfg.primaryHouse,
+        csl,
+        promised: favCount > negCount,
+        favCount,
+        negCount
+      });
+    }
+    return results;
+  }
 
   function computeNumberDivination(num) {
     if (!num || num < 1) num = 1;
@@ -857,8 +1032,17 @@
     // 重新算 RP（上升相关项变了）
     result.rulingPlanets = computeRulingPlanets(newAsc, result.planets, result.meta.jdUt1);
 
+    // 重新算 Significators（宫位变了，征象星跟着变）
+    result.significators = computeSignificators(result.houses, result.planets);
+
     // 重新算 CSL 分析
     result.cslAnalysis = computeCslAnalysis(result.houses, result.planets);
+
+    // 重新算 House Promises（基于新 CSL）
+    result.housePromises = computeHousePromises(result.houses, result.significators);
+
+    // 重新算 Event Promises（8 类人生事件）
+    result.eventPromises = computeEventPromises(result.houses, result.significators);
 
     // 重新算 Rahu/Ketu 五重代理
     result.rahuKetuProxy = computeRahuKetuProxy(result.planets, result.houses);
@@ -955,13 +1139,42 @@
     }
     lines.push('');
 
+    // House Promises（XALEN HousePromise）
+    if (result.housePromises && result.housePromises.length) {
+      lines.push(`🎯 House Promises (宫位许诺 — XALEN HousePromise)`);
+      lines.push('');
+      lines.push(`每个宫位的 CSL（宫头子主）是否许诺该宫位的事项。Positive=吉，Negative=凶，Mixed=混合。`);
+      lines.push('');
+      lines.push(`| House | CSL | Promise | Favorable Count | Unfavorable Count |`);
+      lines.push(`|-------|-----|---------|-----------------|-------------------|`);
+      for (const hp of result.housePromises) {
+        const promiseMark = hp.promise === 'Positive' ? '✅ Positive' : (hp.promise === 'Negative' ? '❌ Negative' : '⚠️ Mixed');
+        lines.push(`| ${hp.house} | ${hp.csl} | ${promiseMark} | ${hp.favCount} | ${hp.unfavCount} |`);
+      }
+      lines.push('');
+    }
+
+    // Event Promises（XALEN KpEvent）
+    if (result.eventPromises && result.eventPromises.length) {
+      lines.push(`💍 Event Promises (人生事件许诺 — XALEN KpEvent)`);
+      lines.push('');
+      lines.push(`8 类人生事件是否许诺。基于该事件主宫的 CSL 是否 signify 该事件的 favorable houses。`);
+      lines.push('');
+      lines.push(`| Event | Primary House | CSL | Promised | Fav Count | Neg Count |`);
+      lines.push(`|-------|--------------|-----|----------|-----------|-----------|`);
+      for (const ep of result.eventPromises) {
+        const promisedMark = ep.promised ? '✅ Yes' : '❌ No';
+        lines.push(`| ${ep.event} | ${ep.primaryHouse} | ${ep.csl} | ${promisedMark} | ${ep.favCount} | ${ep.negCount} |`);
+      }
+      lines.push('');
+    }
+
     // Vimshottari Dasha
     if (result.dasha) {
       const d = result.dasha;
       lines.push(`⏳ Vimsottari Dasha Timeline`);
       lines.push('');
       const moon = result.planets.Moon;
-      const balance = calcDashaBalance(moon.longitude, jdNow());
       lines.push(`Based on the Moon's nakshatra position at chart time. Used for timing (应期) of events.`);
       lines.push(`Current Active Dasha at Chart Time: ${d.mahadasha.lord} MD → ${d.antardasha.lord} AD${d.pratyantardasha ? ` → ${d.pratyantardasha.lord} PD` : ''}`);
       lines.push(`Starting Dasha Parameters: Moon in ${moon.nakshatraName} (Lord: ${moon.nakshatraLord}) → Starting Mahadasha: ${moon.nakshatraLord}`);
