@@ -296,8 +296,10 @@ The [`apps/`](apps/) directory contains end-user applications built on top of XA
 | App | Stack | Description |
 |---|---|---|
 | [`kp-astro-web`](apps/kp-astro-web/) | Kotlin/JS | KP (Krishnamurti Paddhati) astrology web app — 249 sub-lord table, significators, Vimshottari Dasha timeline, Horary, debug panel. Pure frontend, no runtime dependencies. |
+| [`kp-astro-android`](apps/kp-astro-android/) | Kotlin/Android | KP astrology Android app — native shell + WebView embedding the web app, with optional DE440S ephemeris download for sub-arcsecond precision. |
 
 [![KP Astro Web Build](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-web.yml/badge.svg)](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-web.yml)
+[![KP Astro Android APK Build](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-android.yml/badge.svg)](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-android.yml)
 
 ---
 
