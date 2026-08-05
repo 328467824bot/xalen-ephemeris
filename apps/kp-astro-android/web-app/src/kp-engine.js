@@ -306,14 +306,15 @@
       });
     }
 
-    // 4. 7 大统治星 (Ruling Planets, RP)
-    const rp = computeRulingPlanets(asc, planets, jdUt1);
+    // 4. 7 大统治星 (Ruling Planets, RP) — 默认 5 RP，可切换 7 RP
+    const rpMode = input.rpMode || 'ksk5';
+    const rp = computeRulingPlanets(asc, planets, jdUt1, rpMode);
 
-    // 5. Significators（征象星，XALEN 风格 — 每颗行星主宰/落入的宫位）
+    // 5. Significators（征象星，XALEN 5 级 — A/B/C/D/E）
     const significators = computeSignificators(houses, planets);
 
-    // 6. CSL 分析表（每宫的 CSL 位置 + 主宰宫 + 星宿主 + 星宿主位置）
-    const cslAnalysis = computeCslAnalysis(houses, planets);
+    // 6. CSL 分析表（按 XALEN CuspalSubLord 结构，含 HousePromise）
+    const cslAnalysis = computeCslAnalysis(houses, planets, significators);
 
     // 7. House Promises（每宫许诺 Positive/Negative/Mixed，XALEN HousePromise）
     const housePromises = computeHousePromises(houses, significators);
@@ -403,6 +404,7 @@
       pada: padaOf(longitude),
       subLord: kpSubLord(longitude),
       subSubLord: kpSubSubLord(longitude),
+      navamsaSign: getNavamsaSign(longitude),  // D9 星座
       isRetrograde: !!isRetro,
       isShadow: name === 'Rahu' || name === 'Ketu',
       speed: speed || 0,
@@ -412,51 +414,151 @@
 
   // ───────────────────────── Ruling Planets ─────────────────────────
 
-  function computeRulingPlanets(asc, planets, jdUt1) {
+  /**
+   * 计算 7 大统治星 (Ruling Planets, RP)
+   * 
+   * 支持两种模式：
+   *   - 'ksk5' (默认): KSK 经典 5 RP（Day Lord + Lagna Sign/Star Lord + Moon Sign/Star Lord）
+   *   - 'extended7': 现代扩展 7 RP（加上 Asc Sub Lord + Moon Sub Lord）
+   * 
+   * 强度排序（来自 KSK 原著 + AstroSage 官方教程）：
+   *   5 RP: 上升星主 > 上升宫主 > 月亮星主 > 月亮宫主 > 日主
+   *   7 RP: 上升子主 > 上升星主 > 月亮星主 > 上升宫主 > 月亮宫主 > 月亮子主 > 日主
+   * 
+   * 重复即加强（简单计数，不用吉凶修正）
+   * 逆行行星 star/sub 里的 RP 应剔除
+   * 
+   * Rahu/Ketu 代理规则（经典四重）：
+   *   1. 合相行星（conjoining）
+   *   2. 相位行星（aspecting）
+   *   3. 星主（Nakshatra Lord / Star Lord）
+   *   4. 星座主星（Sign Lord / Dispositor）
+   */
+  function computeRulingPlanets(asc, planets, jdUt1, rpMode) {
+    const mode = rpMode || 'ksk5';  // 默认 5 RP
     const raw = [];
-    raw.push({ key: 'DayLord', role: '星期主星', roleEn: 'Day Lord', planet: getDayLord(jdUt1), weight: 5 });
-    raw.push({ key: 'AscSignLord', role: '上升星座主', roleEn: 'Ascendant Sign Lord', planet: asc.rashiLord, weight: 5 });
-    raw.push({ key: 'AscNakLord', role: '上升星宿主', roleEn: 'Ascendant Star Lord', planet: asc.nakshatraLord, weight: 5 });
-    raw.push({ key: 'AscSubLord', role: '上升子主', roleEn: 'Ascendant Sub Lord', planet: asc.subLord, weight: 5 });
-    raw.push({ key: 'MoonSignLord', role: '月亮星座主', roleEn: 'Moon Sign Lord', planet: planets.Moon.rashiLord, weight: 5 });
-    raw.push({ key: 'MoonNakLord', role: '月亮星宿主', roleEn: 'Moon Star Lord', planet: planets.Moon.nakshatraLord, weight: 5 });
-    raw.push({ key: 'MoonSubLord', role: '月亮子主', roleEn: 'Moon Sub Lord', planet: planets.Moon.subLord, weight: 5 });
 
-    // Rahu/Ketu 代理规则
-    const planetSet = new Set(raw.map(r => r.planet));
+    // 按强度排序构建 RP 列表
+    if (mode === 'extended7') {
+      // 7 RP: 上升子主 > 上升星主 > 月亮星主 > 上升宫主 > 月亮宫主 > 月亮子主 > 日主
+      raw.push({ key: 'AscSubLord', role: '上升子主', roleEn: 'Ascendant Sub Lord', planet: asc.subLord, order: 1 });
+      raw.push({ key: 'AscNakLord', role: '上升星主', roleEn: 'Ascendant Star Lord', planet: asc.nakshatraLord, order: 2 });
+      raw.push({ key: 'MoonNakLord', role: '月亮星主', roleEn: 'Moon Star Lord', planet: planets.Moon.nakshatraLord, order: 3 });
+      raw.push({ key: 'AscSignLord', role: '上升宫主', roleEn: 'Ascendant Sign Lord', planet: asc.rashiLord, order: 4 });
+      raw.push({ key: 'MoonSignLord', role: '月亮宫主', roleEn: 'Moon Sign Lord', planet: planets.Moon.rashiLord, order: 5 });
+      raw.push({ key: 'MoonSubLord', role: '月亮子主', roleEn: 'Moon Sub Lord', planet: planets.Moon.subLord, order: 6 });
+      raw.push({ key: 'DayLord', role: '日主', roleEn: 'Day Lord', planet: getDayLord(jdUt1), order: 7 });
+    } else {
+      // 5 RP (KSK 经典): 上升星主 > 上升宫主 > 月亮星主 > 月亮宫主 > 日主
+      raw.push({ key: 'AscNakLord', role: '上升星主', roleEn: 'Ascendant Star Lord', planet: asc.nakshatraLord, order: 1 });
+      raw.push({ key: 'AscSignLord', role: '上升宫主', roleEn: 'Ascendant Sign Lord', planet: asc.rashiLord, order: 2 });
+      raw.push({ key: 'MoonNakLord', role: '月亮星主', roleEn: 'Moon Star Lord', planet: planets.Moon.nakshatraLord, order: 3 });
+      raw.push({ key: 'MoonSignLord', role: '月亮宫主', roleEn: 'Moon Sign Lord', planet: planets.Moon.rashiLord, order: 4 });
+      raw.push({ key: 'DayLord', role: '日主', roleEn: 'Day Lord', planet: getDayLord(jdUt1), order: 5 });
+    }
+
+    // 剔除逆行行星 star/sub 里的 RP（KSK 规则）
+    const filtered = raw.filter(rp => {
+      if (!rp.planet) return false;
+      const p = planets[rp.planet];
+      // 如果 RP 行星本身逆行，不剔除（逆行行星本身作为 RP 不受影响）
+      // 但如果 RP 行星在逆行行星的 star/sub 里，应剔除
+      // 简化：暂不实现此规则（需要完整的 star/sub 关系图）
+      return true;
+    });
+
+    // Rahu/Ketu 代理规则（经典四重）
+    const planetSet = new Set(filtered.map(r => r.planet));
     if (planetSet.has('Rahu')) {
-      raw.push({ key: 'RahuProxy', role: '罗睺代理(Mercury)', roleEn: 'Rahu Proxy (Mercury)', planet: 'Mercury', weight: 3 });
+      const agents = computeRahuKetuAgents('Rahu', planets);
+      if (agents.length > 0) {
+        filtered.push({ key: 'RahuAgent', role: '罗睺代理(' + agents[0] + ')', roleEn: 'Rahu Agent (' + agents[0] + ')', planet: agents[0], order: 99 });
+      }
     }
     if (planetSet.has('Ketu')) {
-      raw.push({ key: 'KetuProxy', role: '计都代理(Mars)', roleEn: 'Ketu Proxy (Mars)', planet: 'Mars', weight: 3 });
+      const agents = computeRahuKetuAgents('Ketu', planets);
+      if (agents.length > 0) {
+        filtered.push({ key: 'KetuAgent', role: '计都代理(' + agents[0] + ')', roleEn: 'Ketu Agent (' + agents[0] + ')', planet: agents[0], order: 99 });
+      }
     }
 
-    // 评分
-    const scored = [];
+    // 简单计数评分（重复即加强）
     const grouped = {};
-    for (const r of raw) {
-      grouped[r.planet] = grouped[r.planet] || { planet: r.planet, roles: [], rolesEn: [], weight: 0 };
+    for (const r of filtered) {
+      grouped[r.planet] = grouped[r.planet] || { planet: r.planet, roles: [], rolesEn: [], count: 0, minOrder: 99 };
       grouped[r.planet].roles.push(r.role);
       grouped[r.planet].rolesEn.push(r.roleEn);
-      grouped[r.planet].weight += r.weight;
+      grouped[r.planet].count += 1;
+      grouped[r.planet].minOrder = Math.min(grouped[r.planet].minOrder, r.order);
     }
-    for (const p of Object.keys(grouped)) {
-      const g = grouped[p];
-      let score = g.weight;
-      if (g.roles.length > 1) score += 2;
-      if (NATURAL_NATURE[p] === 'benefic') score += 1;
-      else if (NATURAL_NATURE[p] === 'malefic') score -= 1;
-      scored.push({
-        planet: p,
-        planetCn: PLANET_CN[p] || p,
-        roles: g.roles,
-        rolesEn: g.rolesEn,
-        score,
-        isShadow: p === 'Rahu' || p === 'Ketu'
-      });
-    }
-    scored.sort((a, b) => b.score - a.score);
+
+    const scored = Object.values(grouped).map(g => ({
+      planet: g.planet,
+      planetCn: PLANET_CN[g.planet] || g.planet,
+      roles: g.roles,
+      rolesEn: g.rolesEn,
+      score: g.count,  // 简单计数
+      minOrder: g.minOrder,  // 最强位置（用于排序）
+      isShadow: g.planet === 'Rahu' || g.planet === 'Ketu'
+    }));
+
+    // 排序：先按计数降序，再按最强位置升序
+    scored.sort((a, b) => b.score - a.score || a.minOrder - b.minOrder);
     return scored;
+  }
+
+  /**
+   * Rahu/Ketu 代理行星计算（经典四重）
+   * 1. 合相行星（conjoining）— 与 Rahu/Ketu 同宫的行星
+   * 2. 相位行星（aspecting）— 对 Rahu/Ketu 形成相位的行星
+   * 3. 星主（Nakshatra Lord / Star Lord）
+   * 4. 星座主星（Sign Lord / Dispositor）
+   * 返回按优先级排序的代理行星列表
+   */
+  function computeRahuKetuAgents(nodeName, planets) {
+    const node = planets[nodeName];
+    if (!node) return [];
+    const agents = [];
+    const seen = new Set();
+
+    // 1. 合相行星（同宫）
+    for (const pname of PLANET_NAMES) {
+      if (pname === nodeName) continue;
+      const p = planets[pname];
+      if (!p) continue;
+      if (p.rashi === node.rashi) {
+        if (!seen.has(pname)) { agents.push(pname); seen.add(pname); }
+      }
+    }
+
+    // 2. 相位行星（Vedic Drishti）
+    for (const pname of PLANET_NAMES) {
+      if (pname === nodeName) continue;
+      const p = planets[pname];
+      if (!p) continue;
+      const aspects = VEDIC_ASPECTS[pname] || [7];
+      for (const asp of aspects) {
+        const toSign = (p.rashi + asp - 1) % 12;
+        if (toSign === node.rashi) {
+          if (!seen.has(pname)) { agents.push(pname); seen.add(pname); }
+          break;
+        }
+      }
+    }
+
+    // 3. 星主（Nakshatra Lord / Star Lord）
+    const starLord = node.nakshatraLord;
+    if (starLord && starLord !== nodeName && !seen.has(starLord)) {
+      agents.push(starLord); seen.add(starLord);
+    }
+
+    // 4. 星座主星（Sign Lord / Dispositor）
+    const signLord = node.rashiLord;
+    if (signLord && signLord !== nodeName && !seen.has(signLord)) {
+      agents.push(signLord); seen.add(signLord);
+    }
+
+    return agents;
   }
 
   function getDayLord(jdUt1) {
@@ -465,9 +567,13 @@
     return WEEKDAY_LORDS[weekday];
   }
 
-  // ───────────────────────── CSL Analysis ─────────────────────────
+  // ───────────────────────── CSL Analysis（按 XALEN CuspalSubLord 结构）─────────────────────────
+  //
+  // XALEN kp.rs 的 cuspal_analysis() 返回 CuspalSubLord:
+  //   { house, cusp_deg, sign_lord, star_lord, sub_lord, promise }
+  // promise = HousePromise (Positive/Negative/Mixed)
 
-  function computeCslAnalysis(houses, planets) {
+  function computeCslAnalysis(houses, planets, significators) {
     return houses.map(h => {
       const csl = h.cuspSubLord;
       // 找 CSL 行星所在宫
@@ -476,7 +582,6 @@
         if (hh.occupants.includes(csl)) { cslHouse = hh.number; break; }
       }
       // 找 CSL 主宰的宫（作为星座主）
-      const cslRashiLord = planets[csl]?.rashiLord;
       const cslRules = [];
       for (const hh of houses) {
         if (hh.lord === csl) cslRules.push(hh.number);
@@ -490,10 +595,30 @@
           if (hh.occupants.includes(cslStarLord)) { starLordHouse = hh.number; break; }
         }
       }
+      // HousePromise（用 significators 计算）
+      let promise = 'Mixed';
+      if (significators) {
+        const cslSig = significators.find(s => s.planet === csl);
+        if (cslSig) {
+          const fav = CUSP_FAVORABLE[h.number] || [];
+          const unfav = CUSP_UNFAVORABLE[h.number] || [];
+          const favCount = cslSig.signifiedHouses.filter(x => fav.includes(x)).length;
+          const unfavCount = cslSig.signifiedHouses.filter(x => unfav.includes(x)).length;
+          if (favCount > 0 && unfavCount === 0) promise = 'Positive';
+          else if (unfavCount > 0 && favCount === 0) promise = 'Negative';
+          else if (favCount > 0 && unfavCount > 0) promise = 'Mixed';
+        }
+      }
+      // XALEN 结构
       return {
         house: h.number,
-        csl,
-        cslHouse,
+        cuspDeg: h.cuspDeg,
+        signLord: h.lord,
+        starLord: h.cuspNakshatraLord,
+        subLord: csl,
+        promise: promise,
+        // 额外信息（原版 HTML 兼容）
+        cslHouse: cslHouse,
         cslRules: cslRules.length ? cslRules.join(',') : '(无)',
         cslStarLord: cslStarLord || '—',
         starLordHouse: starLordHouse || '—'
@@ -501,7 +626,7 @@
     });
   }
 
-  // ───────────────────────── Significators（征象星，XALEN 风格）─────────────────────────
+  // ───────────────────────── Significators（征象星，XALEN 5 级）─────────────────────────
   //
   // 来自 XALEN 库 crates/xalen-vedic/src/kp.rs 的 compute_significators
   // 每颗行星返回：
@@ -509,11 +634,43 @@
   //   - signifiedHouses: 该行星主宰/落入的宫位列表
   //   - strengthOrder: 按强度排序的 (house, type) 对
   //
-  // KP 强度顺序（XALEN）：StarLord > Occupant > Owner > Aspecting
+  // XALEN 5 级（A > B > C > D > E）：
+  //   A (StarLord): 此行星是某行星 X 的 star lord，且 X 落入某宫 → signify 该宫
+  //   B (Occupant): 此行星落入的宫
+  //   C (StarLord of Owner): 此行星是某宫 owner 的 star lord → signify 该宫
+  //   D (Owner): 此行星拥有的星座对应的宫
+  //   E (Aspecting): 此行星相位的宫
+  //
+  // 对应 AstroSage 官方教程的 Level 1-4（+ Aspecting）：
+  //   Level 1 = A (StarLord 占据的宫)
+  //   Level 2 = B (Occupant)
+  //   Level 3 = C (StarLord 拥有的宫) — 即 star lord of owner
+  //   Level 4 = D (Owner)
 
   function computeSignificators(houses, planets) {
-    const SIGNIF_TYPES = ['StarLord', 'Occupant', 'Owner', 'Aspecting'];
     const result = [];
+
+    // 预计算：每颗行星落入哪个宫
+    const planetHouse = {};
+    for (const pname of PLANET_NAMES) {
+      const p = planets[pname];
+      if (!p) continue;
+      for (const h of houses) {
+        if (h.occupants.includes(pname)) { planetHouse[pname] = h.number; break; }
+      }
+    }
+
+    // 预计算：每颗行星的 star lord
+    const planetStarLord = {};
+    for (const pname of PLANET_NAMES) {
+      if (planets[pname]) planetStarLord[pname] = planets[pname].nakshatraLord;
+    }
+
+    // 预计算：每宫的 owner planet（星座主是哪颗行星）
+    const houseOwner = {};
+    for (const h of houses) {
+      houseOwner[h.number] = h.lord;
+    }
 
     for (const planetName of PLANET_NAMES) {
       const p = planets[planetName];
@@ -522,21 +679,33 @@
       const signifiedHouses = new Set();
       const strengthOrder = [];
 
-      // 1. StarLord: 行星所在星宿的主星主宰的宫位 + 该主星落入的宫位
-      const starLord = p.nakshatraLord;
-      if (starLord && starLord !== planetName) {
-        // starLord 主宰的宫位
-        for (const h of houses) {
-          if (h.lord === starLord) {
-            signifiedHouses.add(h.number);
-            strengthOrder.push([h.number, 'StarLord']);
+      // A (StarLord): 如果此行星是某行星 X 的 star lord，且 X 落入某宫 → signify 该宫
+      for (const otherName of PLANET_NAMES) {
+        if (otherName === planetName) continue;
+        const otherStarLord = planetStarLord[otherName];
+        if (otherStarLord === planetName) {
+          const otherHouse = planetHouse[otherName];
+          if (otherHouse) {
+            signifiedHouses.add(otherHouse);
+            strengthOrder.push([otherHouse, 'StarLord']);
           }
         }
-        // starLord 落入的宫位
-        const starLordPlanet = planets[starLord];
-        if (starLordPlanet) {
-          for (const h of houses) {
-            if (h.occupants.includes(starLord)) {
+      }
+
+      // B (Occupant): 此行星落入的宫
+      const myHouse = planetHouse[planetName];
+      if (myHouse) {
+        signifiedHouses.add(myHouse);
+        strengthOrder.push([myHouse, 'Occupant']);
+      }
+
+      // C (StarLord of Owner): 如果此行星是某宫 owner 的 star lord → signify 该宫
+      for (const h of houses) {
+        const owner = houseOwner[h.number];
+        if (owner && owner !== planetName) {
+          const ownerStarLord = planetStarLord[owner];
+          if (ownerStarLord === planetName) {
+            if (!signifiedHouses.has(h.number)) {
               signifiedHouses.add(h.number);
               strengthOrder.push([h.number, 'StarLord']);
             }
@@ -544,26 +713,15 @@
         }
       }
 
-      // 2. Occupant: 行星本身落入的宫位
+      // D (Owner): 此行星拥有的星座对应的宫
       for (const h of houses) {
-        if (h.occupants.includes(planetName)) {
+        if (h.lord === planetName) {
           signifiedHouses.add(h.number);
-          strengthOrder.push([h.number, 'Occupant']);
+          strengthOrder.push([h.number, 'Owner']);
         }
       }
 
-      // 3. Owner: 行星所在星座的星座主主宰的宫位（即行星落宫的星座主）
-      const owner = p.rashiLord;
-      if (owner && owner !== planetName) {
-        for (const h of houses) {
-          if (h.lord === owner) {
-            signifiedHouses.add(h.number);
-            strengthOrder.push([h.number, 'Owner']);
-          }
-        }
-      }
-
-      // 4. Aspecting: 该行星用 Vedic Drishti 相位的宫位
+      // E (Aspecting): 此行星相位的宫
       const aspects = VEDIC_ASPECTS[planetName] || [7];
       for (const asp of aspects) {
         const toSign = (p.rashi + asp - 1) % 12;
@@ -585,54 +743,61 @@
     return result;
   }
 
-  // ───────────────────────── Rahu/Ketu 五重代理 ─────────────────────────
+  // ───────────────────────── Rahu/Ketu 代理（经典四重）─────────────────────────
+  //
+  // 权威规则（AstroSage 官方教程 + KSK 原著）：
+  //   1. 合相行星（conjoining）— 与 Rahu/Ketu 同宫的行星
+  //   2. 相位行星（aspecting）— 对 Rahu/Ketu 形成相位的行星
+  //   3. 星主（Nakshatra Lord / Star Lord）
+  //   4. 星座主星（Sign Lord / Dispositor）
+  //
+  // 现代扩展五重：加"自己所在宫位"作为第 0 层（可选）
 
   function computeRahuKetuProxy(planets, houses) {
     const compute = (name) => {
       const p = planets[name];
       if (!p) return null;
-      // 1. 落座代理 = 星座主
-      const dispositor = p.rashiLord;
-      // 2. 同宫代理 = 同宫其他行星
+      
+      // 用 computeRahuKetuAgents 获取四重代理（已按优先级排序）
+      const agents = computeRahuKetuAgents(name, planets);
+      
+      // 按四重结构返回
       const myHouse = houses.find(h => h.occupants.includes(name));
-      const conjunct = myHouse ? myHouse.occupants.filter(o => o !== name) : [];
-      // 3. 相位代理（用 Vedic Drishti）
-      const aspectingPlanets = [];
-      for (const opName of PLANET_NAMES) {
-        if (opName === name) continue;
-        const op = planets[opName];
-        if (!op) continue;
-        // Vedic 特殊相位
-        const aspects = VEDIC_ASPECTS[opName];
-        if (aspects) {
-          const fromSign = op.rashi;
-          for (const asp of aspects) {
-            const toSign = (fromSign + asp - 1) % 12;
-            if (toSign === p.rashi) {
-              aspectingPlanets.push(opName);
-              break;
-            }
-          }
-        } else {
-          // 默认 7th aspect
-          const toSign = (op.rashi + 6) % 12;
-          if (toSign === p.rashi) aspectingPlanets.push(opName);
+      
+      // 1. 合相行星
+      const conjunct = [];
+      for (const pname of PLANET_NAMES) {
+        if (pname === name) continue;
+        const pp = planets[pname];
+        if (pp && pp.rashi === p.rashi) conjunct.push(pname);
+      }
+      // 2. 相位行星
+      const aspecting = [];
+      for (const pname of PLANET_NAMES) {
+        if (pname === name) continue;
+        const pp = planets[pname];
+        if (!pp) continue;
+        const aspects = VEDIC_ASPECTS[pname] || [7];
+        for (const asp of aspects) {
+          const toSign = (pp.rashi + asp - 1) % 12;
+          if (toSign === p.rashi) { aspecting.push(pname); break; }
         }
       }
-      // 4. 星宿代理 = 星宿主
-      const nakLord = p.nakshatraLord;
-      // 5. 深层星主代理 = 星宿主所在星座的主星
-      const deepLord = planets[nakLord]?.rashiLord;
+      // 3. 星主
+      const starLord = p.nakshatraLord;
+      // 4. 星座主星
+      const signLord = p.rashiLord;
+
       return {
         name,
         position: `${p.rashiName} ${degToDms(p.longitude)} (${p.nakshatraName} nakshatra)`,
         levels: [
-          { level: 1, source: '落座代理 (Dispositor (Sign Lord))', significator: dispositor },
-          { level: 2, source: '同宫代理 (Conjunct Planet)', significator: conjunct.length ? conjunct.join(', ') : '无 (None)' },
-          { level: 3, source: '相位代理 (Aspecting Planet)', significator: aspectingPlanets.length ? aspectingPlanets.join(', ') : '无 (None)' },
-          { level: 4, source: '星宿代理 (Nakshatra Lord (Star Lord))', significator: nakLord },
-          { level: 5, source: '深层星主代理 (Deep Dispositor)', significator: deepLord || '—' }
-        ]
+          { level: 1, source: '合相行星 (Conjunct Planet)', significator: conjunct.length ? conjunct.join(', ') : '无 (None)' },
+          { level: 2, source: '相位行星 (Aspecting Planet)', significator: aspecting.length ? aspecting.join(', ') : '无 (None)' },
+          { level: 3, source: '星主 (Nakshatra Lord / Star Lord)', significator: starLord },
+          { level: 4, source: '星座主星 (Sign Lord / Dispositor)', significator: signLord }
+        ],
+        agents: agents  // 完整代理列表（按优先级）
       };
     };
     return {
@@ -706,9 +871,21 @@
       const distToSun = Math.abs(norm(p.longitude - sun.longitude));
       const distWrap = Math.min(distToSun, 360 - distToSun);
       // 燃烧判定（KP 标准）：太阳±8.5° 内的行星算燃烧
-      const combustThresholds = { Mercury: 12, Venus: 8, Mars: 17, Jupiter: 11, Saturn: 15, Moon: 12 };
-      const isCombust = name !== 'Sun' && name !== 'Rahu' && name !== 'Ketu' &&
-                       distWrap < (combustThresholds[name] || 10);
+      // 燃烧阈值（XALEN dosha.rs + BPHS 权威值）
+      // Moon 12°, Mars 17°, Mercury 14°/12°逆, Venus 10°/8°逆, Jupiter 11°, Saturn 15°
+      // KP 注：水星经常燃烧（离太阳近），但 KP 认为燃烧不破坏水星征象
+      const combustThresholds = {
+        Moon: 12, Mars: 17, Jupiter: 11, Saturn: 15
+      };
+      // Mercury 和 Venus 区分顺逆行
+      let isCombust = false;
+      if (name === 'Mercury') {
+        isCombust = distWrap < (p.isRetrograde ? 12 : 14);
+      } else if (name === 'Venus') {
+        isCombust = distWrap < (p.isRetrograde ? 8 : 10);
+      } else if (name !== 'Sun' && name !== 'Rahu' && name !== 'Ketu') {
+        isCombust = distWrap < (combustThresholds[name] || 10);
+      }
       return {
         name,
         state: p.isRetrograde ? '℞ Retrograde' : 'Direct',
@@ -1041,13 +1218,13 @@
     }
 
     // 重新算 RP（上升相关项变了）
-    result.rulingPlanets = computeRulingPlanets(newAsc, result.planets, result.meta.jdUt1);
+    result.rulingPlanets = computeRulingPlanets(newAsc, result.planets, result.meta.jdUt1, result.input.rpMode || 'ksk5');
 
     // 重新算 Significators（宫位变了，征象星跟着变）
     result.significators = computeSignificators(result.houses, result.planets);
 
     // 重新算 CSL 分析
-    result.cslAnalysis = computeCslAnalysis(result.houses, result.planets);
+    result.cslAnalysis = computeCslAnalysis(result.houses, result.planets, result.significators);
 
     // 重新算 House Promises（基于新 CSL）
     result.housePromises = computeHousePromises(result.houses, result.significators);
@@ -1094,9 +1271,11 @@
     lines.push('');
 
     // 7 RP
-    lines.push(`⚖️ The 7 Ruling Planets (The Divine Judges)`);
+    const rpCount = input.rpMode === 'extended7' ? 7 : 5;
+    const rpLabel = input.rpMode === 'extended7' ? '7 (Extended)' : '5 (KSK Classic)';
+    lines.push(`⚖️ The ${rpCount} Ruling Planets (The Divine Judges) — ${rpLabel}`);
     lines.push('');
-    lines.push(`In advanced KP Prasna, these 7 planets act as the ultimate filters for timing and confirming the event's authenticity.`);
+    lines.push(`In advanced KP Prasna, these ruling planets act as the ultimate filters for timing and confirming the event's authenticity.`);
     lines.push('');
     for (const rp of result.rulingPlanets) {
       lines.push(`- ${rp.rolesEn[0]}: ${rp.planet}`);
@@ -1370,7 +1549,7 @@
     lines.push('');
     lines.push(`Base your judgment primarily on the Cuspal Sub Lords (CSL) of the relevant houses for the question.`);
     lines.push(`Evaluate their Star Lords to see the source of the result, and the Sub Lords for the final outcome.`);
-    lines.push(`Strictly use the 7 Ruling Planets to confirm the timing, filter out false significators, and verify the authenticity of the event.`);
+    lines.push(`Strictly use the Ruling Planets to confirm the timing, filter out false significators, and verify the authenticity of the event.`);
     lines.push(`Use the Vimsottari Dasha timeline above to determine the timing (应期) of the event — the current Mahadasha/Antardasha/Pratyantardasha lords and their relationship to the relevant house CSLs indicate when the event will fructify.`);
     lines.push(`Refer to the Significators Reference table above to map planets/houses to their signified matters — identify which houses and planets are relevant to the query, then check their CSLs.`);
     lines.push(`Consider the Planetary Aspects (Drishti) when evaluating planet strength and influences — aspects modify how a planet expresses its significations.`);
@@ -1386,15 +1565,27 @@
   }
 
   // Navamsa (D9) 计算
-  function getNavamsa(deg) {
+  // Navamsa (D9) 星座计算
+  // 标准 KP/Vedic 算法：
+  // - Movable signs (Aries/Cancer/Libra/Capricorn) → Navamsa 从该 sign 开始
+  // - Fixed signs (Taurus/Leo/Scorpio/Aquarius) → Navamsa 从第 9 sign 开始
+  // - Dual signs (Gemini/Virgo/Sagittarius/Pisces) → Navamsa 从第 5 sign 开始
+  function getNavamsaSign(deg) {
     const d = norm(deg);
     const signIdx = Math.floor(d / 30);
     const inSign = d - signIdx * 30;
-    const navIdx = Math.floor(inSign / (30/9));
-    const startSigns = [0, 3, 6, 9]; // Cardinal signs
-    const startSign = startSigns[signIdx % 4];
+    const navIdx = Math.floor(inSign / (30/9));  // 0-8
+    // 起始 sign 按 sign modality
+    const modality = signIdx % 3;  // 0=movable, 1=fixed, 2=dual
+    const startSigns = [signIdx, (signIdx + 8) % 12, (signIdx + 4) % 12];
+    const startSign = startSigns[modality];
     const navSign = (startSign + navIdx) % 12;
     return RASHIS[navSign];
+  }
+
+  // 兼容旧调用
+  function getNavamsa(deg) {
+    return getNavamsaSign(deg);
   }
 
   function calcDashaBalance(moonDeg, jdNow) {
