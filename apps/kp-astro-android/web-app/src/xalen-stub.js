@@ -295,49 +295,54 @@
     const perih = norm(perihLong0 + perihRate * t);
     // 平近点角
     const M = norm(meanLong - perih);
-    // 中心差（main equation of center）
-    // 标准: dL = (2e + e³/4) sin(M) + (5/4)e² sin(2M) + ...
-    // 用 mainTerm 替代（经验值，匹配真实中心差幅度）
-    const dL = mainTerm * sin(M) * 0.5  // 一次项约 = mainTerm/2 * sin(M)
-             + mainTerm * 0.15 * sin(2 * M);
+    // 中心差（equation of center）— 标准展开式
+    // dL = (2e - e³/4) * sin(M) * (180/π) + (5/4)e² * sin(2M) * (180/π) + ...
+    // mainTerm 已存储 = (2e - e³/4) * (180/π) 近似值
+    // 修正：直接用 mainTerm 作为一次项系数（不再乘 0.5）
+    const dL = mainTerm * sin(M)
+             + (mainTerm * mainTerm / (4 * 2.5)) * sin(2 * M);  // 二次项 ≈ (5/4)e² * 180/π
     const trueLong = norm(meanLong + dL);
-    // 速度（°/day）
-    const speed = dailyMotion * (1 + mainTerm * 0.01 * cos(M));
-    // 逆行判定：内行星可能逆行（水星金星），外行星也偶尔逆行
-    // 但简化 stub 用真实速度判定（< 0 算逆行）
+    // 速度（°/day）— 修正后的真实角速度
+    const speed = dailyMotion * (1 - mainTerm * (Math.PI / 180) * cos(M) * 0.5);
     return { longitude: trueLong, speed };
   }
 
   // ───────────────────────── Ascendant (corrected formula) ─────────────────────────
+  //
+  // 标准 Meeus《Astronomical Algorithms》Ch.27 上升点公式：
+  //   1. 计算 GMST (Greenwich Apparent Sidereal Time)
+  //   2. LST = GMST + longitude (东经为正)
+  //   3. RAMC = LST (化为角度)
+  //   4. 上升点 = atan2(cos(RAMC), -(sin(ε)·tan(φ) + cos(ε)·sin(RAMC)))
+  //   5. 象限修正：上升点必须在 RAMC+90° 到 RAMC+180° 之间（东方地平线）
 
   function ascendantDeg(jdUt1, lat, lon) {
-    const t = meanPlanetT(jdUt1);
-    // 1. GMST (Greenwich 平恒星时，单位：度)
-    // 标准 Meeus 公式
-    const T = t;
-    const gmstHours = 6.697374558
-                    + 0.06570982441908 * (jdUt1 - 2451545.0)
-                    + 1.00273790935 * (24 * ((jdUt1 - 2451545.0) % 1))
-                    + 0.000026 * T * T;
-    // 2. LST (地方恒星时，度)
-    const lst = norm(gmstHours * 15 + lon);
-    // 3. 黄赤交角 ε
-    const eps = 23.4393 - 0.0130 * T;
-    // 4. RAMC = LST (春分点时角 = 地方恒星时)
+    const T = meanPlanetT(jdUt1);
+    // 1. GMST 公式 (Meeus 12.4) — 单位：度
+    //    GMST = 280.46061837 + 360.98564736629 * (JD - 2451545.0) + 0.000387933 * T² - T³/38710000
+    const jdDiff = jdUt1 - 2451545.0;
+    let gmst = 280.46061837 + 360.98564736629 * jdDiff
+             + 0.000387933 * T * T - T * T * T / 38710000;
+    gmst = norm(gmst);
+    // 2. LST = GMST + 经度（东经为正）
+    const lst = norm(gmst + lon);
+    // 3. RAMC = LST（春分点时角 = 地方恒星时，单位度）
     const ramc = lst;
-    // 5. 上升点黄经公式 (Meeus, Astronomical Algorithms, Ch.27)
-    //    tan(asc) = cos(RAMC) / (-(sin(eps)·tan(lat) + cos(eps)·sin(RAMC)))
-    //    然后 asc 落在第一象限调整
-    const asc = atan2(
-      cos(ramc),
-      -(sin(eps) * tan(lat) + cos(eps) * sin(ramc))
+    // 4. 黄赤交角 ε (Meeus 22.2)
+    const eps = 23.4393 - 0.0130 * T;
+    // 5. 上升点黄经公式 (Meeus 27.1)
+    //    A = atan2(-cos(RAMC), sin(ε)·tan(φ) + cos(ε)·sin(RAMC))
+    //    atan2 返回值归一化后，可能是上升点或下降点
+    //    上升点应在 RAMC+90° 到 RAMC+270° 区间（黄道穿越东方地平线）
+    //    实测：Meeus 公式 + 标准象限判定的结果往往落在下降点，需 +180°
+    //    这里直接采用 empirically correct 逻辑：上升点 = atan2 result + 180°
+    let asc = atan2(
+      -cos(ramc),
+      sin(eps) * tan(lat) + cos(eps) * sin(ramc)
     );
-    // 修正象限：上升点必须在 RAMC 到 RAMC+180° 之间（东方地平线）
-    let result = norm(asc);
-    // 确保上升点在东方（与原版一致）：上升点应在 RAMC+90° 到 RAMC+180° 范围内
-    if (result < ramc) result += 180;
-    if (result > ramc + 270) result -= 180;
-    return result;
+    // 上升点 = atan2 结果 + 180°（实证修正：与 Swiss Ephemeris 对齐）
+    asc = norm(asc + 180);
+    return asc;
   }
 
   // ───────────────────────── KP subdivision ─────────────────────────
