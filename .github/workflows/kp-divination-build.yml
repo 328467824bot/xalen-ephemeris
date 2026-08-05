@@ -116,15 +116,14 @@ jobs:
           cat "${{ github.workspace }}/keystore.properties" | sed 's/Password=.*/Password=***/'
 
       # ─────────── 6. Build signed release APK ───────────
-      - name: Generate Gradle wrapper
-        working-directory: apps/kp-astro-android/android-app
-        run: gradle wrapper --gradle-version 8.9 --distribution-type bin
-
       - name: Build release APK
         working-directory: apps/kp-astro-android/android-app
         env:
           KEYSTORE_PROPS_PATH: ${{ github.workspace }}/keystore.properties
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        # 直接用 gradle 命令（由 setup-gradle action 提供），跳过 wrapper
+        # 因为 wrapper jar 是 gitignored 的二进制，且 `gradle wrapper` 命令
+        # 会先解析 build.gradle.kts（依赖 version catalog），不如直接构建
+        run: gradle assembleRelease --no-daemon --stacktrace --configuration-cache=false
 
       # ─────────── 7. Upload artifacts ───────────
       - name: Find APK
