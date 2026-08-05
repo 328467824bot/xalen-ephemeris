@@ -251,8 +251,12 @@
     planets['Ketu'] = buildPlanet('Ketu', ketu.longitude, ketu.is_retrograde, ketu.lon_speed, ketu.distance || 1.0);
 
     // 2. 上升点 + 12 宫（用 XALEN housesJson）
+    // 注意：XALEN WASM 的 housesJson 返回 radians，需要转 degrees
+    // stub 返回 degrees，所以根据 mode 判断
     const housesData = xalen.housesJson(jdUt1, lat, lon, houseSys);
-    const ascTropical = housesData.ascendant;
+    const isRadians = xalen.mode === 'wasm';  // WASM 返回 radians, stub 返回 degrees
+    const radToDeg = (r) => isRadians ? r * 180 / Math.PI : r;
+    const ascTropical = radToDeg(housesData.ascendant);
     const aya = xalen.ayanamsaDeg(jdUt1, ayaId);
     const ascSidereal = norm(ascTropical - aya);
     const asc = {
@@ -272,10 +276,10 @@
     // 3. 12 宫（含 CSL 宫头子主）
     const houses = [];
     for (let i = 0; i < 12; i++) {
-      const cuspTropical = housesData.cusps[i];
+      const cuspTropical = radToDeg(housesData.cusps[i]);
       const cuspSidereal = norm(cuspTropical - aya);
       const sign = rashiOf(cuspSidereal);
-      const nextCuspTropical = housesData.cusps[(i + 1) % 12];
+      const nextCuspTropical = radToDeg(housesData.cusps[(i + 1) % 12]);
       const nextCuspSidereal = norm(nextCuspTropical - aya);
       // 找落入此宫的行星
       const occupants = [];
@@ -760,22 +764,29 @@
   // ───────────────────────── Dasha ─────────────────────────
 
   function findCurrentDasha(dashas, jdNow) {
+    // 兼容两种格式：
+    //   stub: {lord, startJd, endJd, durationYears, antardashas, pratyantardashas}
+    //   XALEN WASM: {lord, start_jd, end_jd, level, sub_periods}
+    const getStart = (d) => d.startJd ?? d.start_jd;
+    const getEnd = (d) => d.endJd ?? d.end_jd;
+    const getSubs = (d) => d.antardashas ?? d.sub_periods ?? [];
+    
     for (const maha of dashas) {
-      if (jdNow >= maha.startJd && jdNow < maha.endJd) {
-        for (const antar of maha.antardashas) {
-          if (jdNow >= antar.startJd && jdNow < antar.endJd) {
+      if (jdNow >= getStart(maha) && jdNow < getEnd(maha)) {
+        for (const antar of getSubs(maha)) {
+          if (jdNow >= getStart(antar) && jdNow < getEnd(antar)) {
+            // 找 pratyantardasha（XALEN WASM 的 antardasha.sub_periods 可能为空）
             let pratyantar = null;
-            if (antar.pratyantardashas) {
-              for (const pa of antar.pratyantardashas) {
-                if (jdNow >= pa.startJd && jdNow < pa.endJd) {
-                  pratyantar = { lord: pa.lord, startJd: pa.startJd, endJd: pa.endJd };
-                  break;
-                }
+            const pratyantardashas = antar.pratyantardashas ?? antar.sub_periods ?? [];
+            for (const pa of pratyantardashas) {
+              if (jdNow >= getStart(pa) && jdNow < getEnd(pa)) {
+                pratyantar = { lord: pa.lord, startJd: getStart(pa), endJd: getEnd(pa) };
+                break;
               }
             }
             return {
-              mahadasha: { lord: maha.lord, startJd: maha.startJd, endJd: maha.endJd, durationYears: maha.durationYears },
-              antardasha: { lord: antar.lord, startJd: antar.startJd, endJd: antar.endJd, durationYears: antar.durationYears },
+              mahadasha: { lord: maha.lord, startJd: getStart(maha), endJd: getEnd(maha), durationYears: maha.durationYears },
+              antardasha: { lord: antar.lord, startJd: getStart(antar), endJd: getEnd(antar), durationYears: antar.durationYears },
               pratyantardasha: pratyantar
             };
           }
@@ -1187,33 +1198,35 @@
       lines.push(`|-----------|------|-------|-----|----------|`);
       for (const maha of result.fullDasha) {
         const isCurrent = maha.lord === d.mahadasha.lord;
-        lines.push(`| MD | ${maha.lord}${isCurrent ? ' ← current' : ''} | ${fmtDate(maha.startJd)} | ${fmtDate(maha.endJd)} | ${maha.durationYears.toFixed(2)}年 |`);
+        lines.push(`| MD | ${maha.lord}${isCurrent ? ' ← current' : ''} | ${fmtDate(maha.startJd ?? maha.start_jd)} | ${fmtDate(maha.endJd ?? maha.end_jd)} | ${((maha.endJd ?? maha.end_jd) - (maha.startJd ?? maha.start_jd))/365.25}年 |`);
       }
       lines.push('');
 
       // 当前大运的副运
       const currentMaha = result.fullDasha.find(m => m.lord === d.mahadasha.lord);
-      if (currentMaha && currentMaha.antardashas) {
+      const antardashas = currentMaha.antardashas ?? currentMaha.sub_periods ?? [];
+      if (currentMaha && antardashas.length) {
         lines.push(`Antardasha (under current ${d.mahadasha.lord} Mahadasha)`);
         lines.push('');
         lines.push(`| Antardasha (under ${d.mahadasha.lord} MD) | Lord | Start | End | Duration |`);
         lines.push(`|----------------------------------|------|-------|-----|----------|`);
-        for (const antar of currentMaha.antardashas) {
+        for (const antar of antardashas) {
           const isCurrent = antar.lord === d.antardasha.lord;
-          lines.push(`| AD | ${antar.lord}${isCurrent ? ' ← current' : ''} | ${fmtDate(antar.startJd)} | ${fmtDate(antar.endJd)} | ${antar.durationYears.toFixed(2)}年 |`);
+          lines.push(`| AD | ${antar.lord}${isCurrent ? ' ← current' : ''} | ${fmtDate(antar.startJd ?? antar.start_jd)} | ${fmtDate(antar.endJd ?? antar.end_jd)} | ${((antar.endJd ?? antar.end_jd) - (antar.startJd ?? antar.start_jd))/365.25}年 |`);
         }
         lines.push('');
 
         // 当前副运的小运
-        const currentAntar = currentMaha.antardashas.find(a => a.lord === d.antardasha.lord);
-        if (currentAntar && currentAntar.pratyantardashas) {
+        const currentAntar = antardashas.find(a => a.lord === d.antardasha.lord);
+        const pratyantardashas = currentAntar?.pratyantardashas ?? currentAntar?.sub_periods ?? [];
+        if (currentAntar && pratyantardashas.length) {
           lines.push(`Pratyantardasha (under current ${d.mahadasha.lord} MD / ${d.antardasha.lord} AD)`);
           lines.push('');
           lines.push(`| Pratyantardasha (under ${d.mahadasha.lord} MD / ${d.antardasha.lord} AD) | Lord | Start | End | Duration |`);
           lines.push(`|-----------------------------------------------------|------|-------|-----|----------|`);
-          for (const pa of currentAntar.pratyantardashas) {
+          for (const pa of pratyantardashas) {
             const isCurrent = d.pratyantardasha && pa.lord === d.pratyantardasha.lord;
-            lines.push(`| PD | ${pa.lord}${isCurrent ? ' ← current' : ''} | ${fmtDate(pa.startJd)} | ${fmtDate(pa.endJd)} | ${pa.durationYears.toFixed(3)}年 |`);
+            lines.push(`| PD | ${pa.lord}${isCurrent ? ' ← current' : ''} | ${fmtDate(pa.startJd ?? pa.start_jd)} | ${fmtDate(pa.endJd ?? pa.end_jd)} | ${((pa.endJd ?? pa.end_jd) - (pa.startJd ?? pa.start_jd))/365.25}年 |`);
           }
           lines.push('');
         }

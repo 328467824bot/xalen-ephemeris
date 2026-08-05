@@ -78,21 +78,29 @@
     _facade() {
       const impl = this._impl;
       const stat = this._implStatic;
+      // 包装函数：如果返回值是字符串，尝试 JSON.parse（XALEN WASM 返回 JSON 字符串）
+      const autoParse = (fn) => (...a) => {
+        const ret = fn(...a);
+        if (typeof ret === 'string') {
+          try { return JSON.parse(ret); } catch { return ret; }
+        }
+        return ret;
+      };
       return {
         mode: this._mode,
-        // 实例方法直接转发
+        // 实例方法直接转发（JSON API 自动 parse）
         tropicalLongitude: (...a) => impl.tropicalLongitude(...a),
         siderealLongitude: (...a) => impl.siderealLongitude(...a),
-        planetPositionJson: (...a) => impl.planetPositionJson(...a),
-        fullChartJson: (...a) => impl.fullChartJson(...a),
-        panchangJson: (...a) => impl.panchangJson(...a),
-        housesJson: (...a) => impl.housesJson(...a),
+        planetPositionJson: autoParse(impl.planetPositionJson.bind(impl)),
+        fullChartJson: autoParse(impl.fullChartJson.bind(impl)),
+        panchangJson: autoParse(impl.panchangJson.bind(impl)),
+        housesJson: autoParse(impl.housesJson.bind(impl)),
         getNakshatra: (...a) => impl.getNakshatra(...a),
-        nakshatraInfoJson: (...a) => impl.nakshatraInfoJson(...a),
+        nakshatraInfoJson: autoParse(impl.nakshatraInfoJson.bind(impl)),
         getRashi: (...a) => impl.getRashi(...a),
-        vimshottariDasha: (...a) => impl.vimshottariDasha(...a),
+        vimshottariDasha: autoParse(impl.vimshottariDasha.bind(impl)),
         divisionalChart: (...a) => impl.divisionalChart(...a),
-        compatibility: (...a) => impl.compatibility(...a),
+        compatibility: autoParse(impl.compatibility.bind(impl)),
         // 静态方法
         julianDay: (...a) => stat.julianDay(...a),
         ayanamsaDeg: (...a) => stat.ayanamsaDeg(...a),
