@@ -7,7 +7,7 @@ This directory contains applications built on top of the XALEN ephemeris library
 | App | Stack | Description |
 |---|---|---|
 | [`kp-astro-web/`](kp-astro-web/) | Kotlin/JS | KP (Krishnamurti Paddhati) astrology web app — pure frontend, zero runtime dependencies |
-| [`kp-astro-android/`](kp-astro-android/) | Kotlin/Android | KP astrology Android app — native shell + WebView embedding the web app, with DE440S ephemeris support |
+| [`kp-astro-android/`](kp-astro-android/) | Kotlin/Android + WebView | KP astrology Android app — WebView hybrid (HTML/JS/CSS + XALEN WASM), native shell for clipboard/share/export |
 
 ## Adding a new app
 
