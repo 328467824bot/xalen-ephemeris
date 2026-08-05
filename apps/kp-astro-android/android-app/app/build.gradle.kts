@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application") version "8.7.2"
     id("org.jetbrains.kotlin.android") version "2.0.21"
@@ -8,12 +10,6 @@ plugins {
 // 从 keystore.properties 读取签名配置。文件路径优先级：
 //   1. 环境变量 KEYSTORE_PROPS_PATH（CI 用，指向 Secrets 解码的临时文件）
 //   2. 项目根目录的 keystore.properties（本地开发用，已 gitignore）
-//
-// keystore.properties 内容（不入库）：
-//   storeFile=/absolute/path/to/release.keystore
-//   storePassword=...
-//   keyAlias=...
-//   keyPassword=...
 //
 // 如果都找不到，release 构建会生成 unsigned APK。
 
@@ -27,7 +23,7 @@ fun tryReadSigningConfig(): SigningConfig? {
         logger.lifecycle("signing: keystore.properties not found at $propsPath (will produce unsigned release APK)")
         return null
     }
-    val props = java.util.Properties().apply { propsFile.inputStream().use { load(it) } }
+    val props = Properties().apply { propsFile.inputStream().use { load(it) } }
     val storeFile = File(props.getProperty("storeFile"))
     if (!storeFile.exists()) {
         logger.lifecycle("signing: keystore file not found at ${storeFile.absolutePath}")
