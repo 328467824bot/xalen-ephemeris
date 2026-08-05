@@ -116,15 +116,15 @@ jobs:
           cat "${{ github.workspace }}/keystore.properties" | sed 's/Password=.*/Password=***/'
 
       # ─────────── 6. Build signed release APK ───────────
+      - name: Generate Gradle wrapper
+        working-directory: apps/kp-astro-android/android-app
+        run: gradle wrapper --gradle-version 8.9 --distribution-type bin
+
       - name: Build release APK
         working-directory: apps/kp-astro-android/android-app
         env:
           KEYSTORE_PROPS_PATH: ${{ github.workspace }}/keystore.properties
-        run: |
-          # Generate wrapper if missing
-          [ -f gradlew ] && chmod +x gradlew || gradle wrapper --gradle-version 8.9 --distribution-type bin
-          # Build release (signed via secrets-based config)
-          ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       # ─────────── 7. Upload artifacts ───────────
       - name: Find APK
