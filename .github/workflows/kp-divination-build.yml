@@ -123,7 +123,7 @@ jobs:
         # 直接用 gradle 命令（由 setup-gradle action 提供），跳过 wrapper
         # 因为 wrapper jar 是 gitignored 的二进制，且 `gradle wrapper` 命令
         # 会先解析 build.gradle.kts（依赖 version catalog），不如直接构建
-        run: gradle assembleRelease --no-daemon --stacktrace --configuration-cache=false
+        run: gradle assembleRelease --no-daemon --stacktrace --no-configuration-cache
 
       # ─────────── 7. Upload artifacts ───────────
       - name: Find APK
