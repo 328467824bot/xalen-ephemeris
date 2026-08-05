@@ -88,9 +88,10 @@
     // 仅实现 Lahiri (id=0) 和 KP (id=2，差异 < 0.05°)
     const centuries = (jdUt1 - 2451545.0) / 36525.0;
     let aya = LAHIRI_J2000 + LAHIRI_RATE_PER_CENTURY * centuries;
-    if (ayanamsaId === 2) {
-      // KP ayanamsa = Lahiri + 微小修正
-      aya += 0.046;  // KP 标准比 Lahiri 大约 0.046°
+    if (ayanamsaId === 1) {
+      // KP ayanamsa = Lahiri + 微小修正（约 +0.046°）
+      // XALEN: 0=Lahiri, 1=KP (KPKrishnamurti), 2=Raman
+      aya += 0.046;
     }
     return aya;
   }

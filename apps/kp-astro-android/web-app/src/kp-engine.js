@@ -226,7 +226,7 @@
    */
   async function computeChart(xalen, input) {
     const { year, month, day, hour, minute, second, tzOffsetMin, lat, lon } = input;
-    const ayaId = input.ayanamsaId ?? 2;        // 默认 KP 岁差
+    const ayaId = input.ayanamsaId ?? 1;        // 默认 KP 岁差（XALEN: 0=Lahiri, 1=KP, 2=Raman）
     const houseSys = input.houseSystem ?? 2;    // 默认 Placidus
     const sec = second || 0;
     const localHour = hour + minute / 60.0 + sec / 3600.0;
@@ -891,7 +891,8 @@
     const tzM = Math.abs(inp.tzOffsetMin % 60);
     lines.push(`- Query Time: ${inp.year}-${pad(inp.month)}-${pad(inp.day)} ${pad(inp.hour)}:${pad(inp.minute)}:${pad(inp.second || 0)} (Local Time, UTC${tzSign}${String(tzH).padStart(2,'0')}:${String(tzM).padStart(2,'0')})`);
     lines.push(`- Location: ${inp.lat.toFixed(4)}° N, ${inp.lon.toFixed(4)}° E (Timezone Offset: ${tzSign}${tzH*60+tzM} mins)`);
-    lines.push(`- Ayanamsa Used: ${m.ayanamsaId === 2 ? 'KP Ayanamsa (Krishnamurti)' : 'Lahiri'} — ${m.ayanamsa.toFixed(6)}°`);
+    const ayaName = m.ayanamsaId === 1 ? 'KP Ayanamsa (Krishnamurti)' : (m.ayanamsaId === 0 ? 'Lahiri' : `Ayanamsa #${m.ayanamsaId}`);
+    lines.push(`- Ayanamsa Used: ${ayaName} — ${m.ayanamsa.toFixed(6)}°`);
     lines.push(`- House System: ${m.houseSystem === 2 ? 'Placidus' : 'Whole-Sign'}`);
     lines.push(`- Mode: Horary Number: ${inp.number || 'N/A'}`);
     lines.push(`- Calculation Engine: XALEN Ephemeris (${m.xalenMode.toUpperCase()})`);
