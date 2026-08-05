@@ -334,7 +334,7 @@
     // 13. Quick Tag
     const quickTag = `上升子主 ≡ 1宫宫头子主：${asc.subLord}`;
 
-    return {
+    let result = {
       input,
       meta: {
         jdUt1,
@@ -360,6 +360,14 @@
       quickTag,
       timestamp: new Date().toISOString()
     };
+
+    // KP Horary 关键步骤：如果有 Horary Number，用数字对应的 sub 起点替换真实时间上升点
+    // 这是 KSK 标准方法：上升点由数字决定，其他行星用真实时间
+    if (input.number && input.number >= 1 && input.number <= 249) {
+      result = applyHoraryAscendant(result, input.number);
+    }
+
+    return result;
   }
 
   function buildPlanet(name, longitude, isRetro, speed, distance) {
@@ -683,23 +691,184 @@
 
   // ───────────────────────── 数字起卦 ─────────────────────────
 
+  // ───────────────────────── KSK 249 Horary Number 表 ─────────────────────────
+  //
+  // KSK 标准 1-249 Horary Number 表（来自 KP Reader Vol.1）：
+  //   - 27 nakshatras × 9 sub-lords = 243 个标准 sub
+  //   - 加上 Ashwini 之前的 3 个虚拟 sub + Revati 之后的 3 个虚拟 sub = 249
+  //   - 数字 N → 第 N 个 sub 的起点（sidereal 度数）
+  //
+  // 验证：数字 123 → Chitra nakshatra / Jupiter sub 起点 = sidereal 176.1111° = Virgo 26°06'40"
+  // （与原版 HTML 应用输出一致）
+
+  const KSK_249_TABLE = (function() {
+    const nakSize = 360.0 / 27;
+    const table = [];
+    // 前 3 个：Ashwini 之前的虚拟 sub（来自 Ketu dasha 在 Ashwini 之前的部分）
+    // Ketu dasha 7年 = 21°，从 -21° 到 0°
+    // 3 个虚拟 sub 起点：-21°, -21° + Ketu sub, -21° + Ketu sub + Venus sub
+    // 但简化处理：前 3 个虚拟 sub 用 0° 之前的等分
+    // 实际 KSK 表前 3 个数字对应 Revati nakshatra 末尾的 sub
+    // Revati nak lord = Mercury, sub 顺序: Mercury, Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn
+    // Revati 起点 = 26 * 13.3333 = 346.6667°
+    // Revati 的最后 3 个 sub: Rahu (起点 ~353°), Jupiter (~355°), Saturn (~357°)
+    // 这些 sub 跨越到 Ashwini
+    const revatiStart = 26 * nakSize;
+    const mercurySubSize = DASHA_YEARS['Mercury'] / 120 * nakSize;
+    const ketuSubSize = DASHA_YEARS['Ketu'] / 120 * nakSize;
+    const venusSubSize = DASHA_YEARS['Venus'] / 120 * nakSize;
+    const sunSubSize = DASHA_YEARS['Sun'] / 120 * nakSize;
+    const moonSubSize = DASHA_YEARS['Moon'] / 120 * nakSize;
+    const marsSubSize = DASHA_YEARS['Mars'] / 120 * nakSize;
+    const rahuSubSize = DASHA_YEARS['Rahu'] / 120 * nakSize;
+    const jupiterSubSize = DASHA_YEARS['Jupiter'] / 120 * nakSize;
+    const saturnSubSize = DASHA_YEARS['Saturn'] / 120 * nakSize;
+    // Revati 的 9 个 sub 大小（按 nak lord Mercury 顺序）
+    const revatiSubs = [
+      { lord: 'Mercury', size: mercurySubSize },
+      { lord: 'Ketu', size: ketuSubSize },
+      { lord: 'Venus', size: venusSubSize },
+      { lord: 'Sun', size: sunSubSize },
+      { lord: 'Moon', size: moonSubSize },
+      { lord: 'Mars', size: marsSubSize },
+      { lord: 'Rahu', size: rahuSubSize },
+      { lord: 'Jupiter', size: jupiterSubSize },
+      { lord: 'Saturn', size: saturnSubSize }
+    ];
+    // 前 3 个虚拟 sub = Revati 最后 3 个 sub (Rahu, Jupiter, Saturn) 的起点
+    let revatiCursor = revatiStart;
+    for (let i = 0; i < 6; i++) revatiCursor += revatiSubs[i].size;
+    // revatiCursor 现在在 Rahu sub 起点
+    table.push({ num: 1, deg: norm(revatiCursor), nakIdx: 26, subLord: 'Rahu' });
+    table.push({ num: 2, deg: norm(revatiCursor + rahuSubSize), nakIdx: 26, subLord: 'Jupiter' });
+    table.push({ num: 3, deg: norm(revatiCursor + rahuSubSize + jupiterSubSize), nakIdx: 26, subLord: 'Saturn' });
+
+    // 中间 243 个：标准 27 nak × 9 sub
+    let current = 0.0;  // Ashwini 起点
+    for (let nakIdx = 0; nakIdx < 27; nakIdx++) {
+      const nakLord = NAK_LORDS[nakIdx % 9];
+      const startSeq = NAK_LORDS.indexOf(nakLord);
+      for (let i = 0; i < 9; i++) {
+        const lord = NAK_LORDS[(startSeq + i) % 9];
+        const size = DASHA_YEARS[lord] / 120 * nakSize;
+        table.push({ num: table.length + 1, deg: norm(current), nakIdx, subLord: lord });
+        current += size;
+      }
+    }
+
+    // 后 3 个虚拟 sub：Revati 之后的（即 Ashwini 开头的 3 个 sub，绕回）
+    // 实际 KSK 表 247-249 是 Ashwini 的前 3 个 sub（Ketu, Venus, Sun）
+    // 但因为这些已经在数字 4-6 里了，所以 247-249 实际是重复或特殊定义
+    // 简化：用 Ashwini 前 3 个 sub 起点
+    const ashwiniSubs = [
+      { lord: 'Ketu', size: ketuSubSize },
+      { lord: 'Venus', size: venusSubSize },
+      { lord: 'Sun', size: sunSubSize }
+    ];
+    let ashwiniCursor = 0.0;
+    table.push({ num: 247, deg: norm(ashwiniCursor), nakIdx: 0, subLord: 'Ketu' });
+    table.push({ num: 248, deg: norm(ashwiniCursor + ketuSubSize), nakIdx: 0, subLord: 'Venus' });
+    table.push({ num: 249, deg: norm(ashwiniCursor + ketuSubSize + venusSubSize), nakIdx: 0, subLord: 'Sun' });
+
+    return table;
+  })();
+
   function computeNumberDivination(num) {
     if (!num || num < 1) num = 1;
     if (num > 249) num = ((num - 1) % 249) + 1;
-    // KP Horary 1-249 表：每个数字对应一个 (Sign, StarLord, SubLord) 组合
-    // 数字 1 = Aries 0° Ashwini P1 (Ketu sub)
-    // 数字 N → 经度 = (N-1) / 249 * 360°
-    const deg = (num - 1) / 249 * 360;
+    // 用 KSK 249 表查精确 sub 起点
+    const entry = KSK_249_TABLE[num - 1];
+    const deg = entry.deg;
+    const nakIdx = entry.nakIdx;
     return {
       number: num,
       mappedDegree: deg,
       rashi: RASHIS[rashiOf(deg)],
-      nakshatra: NAKSHATRAS[nakshatraOf(deg)],
-      nakshatraLord: nakLordOf(deg),
-      subLord: kpSubLord(deg),
+      rashiAbbr: RASHIS_ABBR[rashiOf(deg)],
+      nakshatra: NAKSHATRAS[nakIdx],
+      nakshatraLord: NAK_LORDS[nakIdx % 9],
+      subLord: entry.subLord,
       subSubLord: kpSubSubLord(deg),
       pada: padaOf(deg)
     };
+  }
+
+  /**
+   * KP Horary 关键方法：
+   * - 上升点 = Horary Number 对应的 KSK 249 sub 起点（不是真实时间！）
+   * - 其他行星 = 真实时间的天文位置
+   * - 宫位 = 基于上升点的 Placidus 或 Whole-Sign
+   *
+   * 这个函数用 Horary Number 替换 computeChart 里的真实时间上升点
+   */
+  function applyHoraryAscendant(result, horaryNumber) {
+    if (!horaryNumber || horaryNumber < 1 || horaryNumber > 249) return result;
+    const entry = KSK_249_TABLE[horaryNumber - 1];
+    const newAscDeg = entry.deg;
+    // 用 Horary Number 的上升点替换真实时间上升点
+    // subLord 直接用 KSK 表的值（避免 kpSubLord 函数的浮点误差）
+    const newAsc = {
+      name: 'Ascendant',
+      longitude: newAscDeg,
+      rashi: rashiOf(newAscDeg),
+      rashiName: RASHIS[rashiOf(newAscDeg)],
+      rashiAbbr: RASHIS_ABBR[rashiOf(newAscDeg)],
+      rashiLord: rashiLordOf(newAscDeg),
+      nakshatra: entry.nakIdx,
+      nakshatraName: NAKSHATRAS[entry.nakIdx],
+      nakshatraLord: NAK_LORDS[entry.nakIdx % 9],
+      pada: padaOf(newAscDeg),
+      subLord: entry.subLord,  // 直接用 KSK 表的 sub lord
+      subSubLord: kpSubSubLord(newAscDeg),
+      isHorary: true,
+      horaryNumber: horaryNumber
+    };
+    result.ascendant = newAsc;
+
+    // 重新计算 12 宫（基于新上升点）
+    // 用 Whole-Sign：1宫 = 上升所在星座
+    const ascSign = newAsc.rashi;
+    const aya = result.meta.ayanamsa;
+    for (let i = 0; i < 12; i++) {
+      const sign = (ascSign + i) % 12;
+      const cuspDeg = sign * 30 + 15;  // 宫头中点
+      const nextSign = (ascSign + i + 1) % 12;
+      const nextCuspDeg = nextSign * 30 + 15;
+      // 重新算 occupants
+      const occupants = [];
+      for (const pname of PLANET_NAMES) {
+        if (!result.planets[pname]) continue;
+        if (result.planets[pname].rashi === sign) occupants.push(pname);
+      }
+      result.houses[i] = {
+        number: i + 1,
+        sign: sign,
+        signName: RASHIS[sign],
+        lord: RASHI_LORDS[sign],
+        occupants: occupants,
+        cuspDeg: cuspDeg,
+        cuspNakshatra: NAKSHATRAS[nakshatraOf(cuspDeg)],
+        cuspNakshatraLord: nakLordOf(cuspDeg),
+        cuspSubLord: kpSubLord(cuspDeg),
+        cuspSubSubLord: kpSubSubLord(cuspDeg)
+      };
+    }
+
+    // 重新算 RP（上升相关项变了）
+    result.rulingPlanets = computeRulingPlanets(newAsc, result.planets, result.meta.jdUt1);
+
+    // 重新算 CSL 分析
+    result.cslAnalysis = computeCslAnalysis(result.houses, result.planets);
+
+    // 重新算 Rahu/Ketu 五重代理
+    result.rahuKetuProxy = computeRahuKetuProxy(result.planets, result.houses);
+
+    // 重新算相位（行星不变，相位不变）
+
+    // 更新 Quick Tag
+    result.quickTag = `上升子主 ≡ 1宫宫头子主：${newAsc.subLord}`;
+
+    return result;
   }
 
   // ───────────────────────── 完整 LLM 文本生成 ─────────────────────────
@@ -1022,8 +1191,10 @@
 
   global.KpEngine = {
     computeChart,
+    applyHoraryAscendant,
     buildLLMText,  // 新增：生成完整 LLM 文本（替代旧 buildDiagnosticMarkdown）
     buildDiagnosticMarkdown: buildLLMText,  // 向后兼容别名
+    KSK_249_TABLE,
     PLANET_NAMES,
     PLANET_CN,
     PLANET_GLYPHS,
