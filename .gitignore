@@ -26,3 +26,8 @@ __pycache__/
 
 # wasm-pack output
 /crates/xalen-wasm/pkg/
+
+# Kotlin/JS apps (e.g. apps/kp-astro-web) build artifacts
+/apps/*/build/
+/apps/*/.gradle/
+/apps/*/node_modules/

@@ -289,6 +289,18 @@ cargo bench
 
 ---
 
+## Apps
+
+The [`apps/`](apps/) directory contains end-user applications built on top of XALEN:
+
+| App | Stack | Description |
+|---|---|---|
+| [`kp-astro-web`](apps/kp-astro-web/) | Kotlin/JS | KP (Krishnamurti Paddhati) astrology web app — 249 sub-lord table, significators, Vimshottari Dasha timeline, Horary, debug panel. Pure frontend, no runtime dependencies. |
+
+[![KP Astro Web Build](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-web.yml/badge.svg)](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-web.yml)
+
+---
+
 ## License
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
