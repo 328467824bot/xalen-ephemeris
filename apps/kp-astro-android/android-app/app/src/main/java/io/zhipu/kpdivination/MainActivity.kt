@@ -46,9 +46,10 @@ class MainActivity : ComponentActivity() {
     private val createDocumentLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown")
     ) { uri: Uri? ->
-        if (uri != null) {
-            fileHelper.writeUri(uri, webInterface.pendingExportContent)
-            webInterface.pendingExportContent = null
+        val content = webInterface.pendingExportContent
+        webInterface.pendingExportContent = null
+        if (uri != null && content != null) {
+            fileHelper.writeUri(uri, content)
             webInterface.showToast("已导出排盘文件")
         } else {
             webInterface.showToast("导出已取消")
