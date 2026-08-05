@@ -1,0 +1,210 @@
+name: Build KP Divination APK
+
+# ───────────────────────────────────────────────────────────────
+# CI 流水线（apps/kp-astro-android/）
+#
+# 1. 检出本仓库（含 apps/kp-astro-android/）
+# 2. 用 wasm-pack 编译 xalen-wasm crate（来自本仓库的 crates/xalen-wasm/）
+# 3. 复制 WASM 产物到 apps/kp-astro-android/web-app/pkg/
+# 4. 设置 JDK 17 + Android SDK + Gradle
+# 5. 从 GitHub Secrets 解码 keystore（私密数据）
+# 6. ./gradlew assembleRelease 用 release 签名
+# 7. 上传 signed APK 作为 artifact
+#
+# 触发：push 到 main / 创建 v* tag / 手动
+# ───────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/kp-astro-android/**'
+      - 'crates/xalen-wasm/**'
+      - '.github/workflows/kp-divination-build.yml'
+    tags: [ 'kp-divination-v*' ]
+  pull_request:
+    paths:
+      - 'apps/kp-astro-android/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # ─────────── 1. Checkout ───────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ─────────── 2. Install Rust + wasm-pack ───────────
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-wasm-
+
+      - name: Install wasm-pack
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          wasm-pack --version
+
+      # ─────────── 3. Build XALEN WASM ───────────
+      - name: Build xalen-wasm crate
+        working-directory: crates/xalen-wasm
+        run: |
+          wasm-pack build --target web --release
+          ls -la pkg/
+
+      - name: Copy XALEN WASM pkg → apps/kp-astro-android/web-app/pkg
+        run: |
+          mkdir -p apps/kp-astro-android/web-app/pkg
+          cp -v crates/xalen-wasm/pkg/* apps/kp-astro-android/web-app/pkg/
+          ls -la apps/kp-astro-android/web-app/pkg/
+
+      # ─────────── 4. Setup JDK + Android SDK ───────────
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-34
+            build-tools;34.0.0
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      # ─────────── 5. Decode keystore from secrets ───────────
+      - name: Decode release keystore
+        if: ${{ secrets.KP_DIVINATION_KEYSTORE_BASE64 != '' }}
+        run: |
+          mkdir -p ${{ github.workspace }}/keystore
+          echo "${{ secrets.KP_DIVINATION_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/keystore/kp-divination-release.keystore
+          ls -la ${{ github.workspace }}/keystore/
+        working-directory: apps/kp-astro-android/android-app
+
+      - name: Write signing config
+        if: ${{ secrets.KP_DIVINATION_KEYSTORE_BASE64 != '' }}
+        run: |
+          cat > ${{ github.workspace }}/keystore.properties << EOF
+          storeFile=${{ github.workspace }}/keystore/kp-divination-release.keystore
+          storePassword=${{ secrets.KP_DIVINATION_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KP_DIVINATION_KEY_ALIAS }}
+          keyPassword=${{ secrets.KP_DIVINATION_KEY_PASSWORD }}
+          EOF
+          echo "keystore.properties written"
+
+      # ─────────── 6. Build signed release APK ───────────
+      - name: Build release APK
+        working-directory: apps/kp-astro-android/android-app
+        env:
+          KEYSTORE_PROPS_PATH: ${{ github.workspace }}/keystore.properties
+        run: |
+          # Generate wrapper if missing
+          [ -f gradlew ] && chmod +x gradlew || gradle wrapper --gradle-version 8.9 --distribution-type bin
+          # Build release (signed via secrets-based config)
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      # ─────────── 7. Upload artifacts ───────────
+      - name: Find APK
+        id: find-apk
+        run: |
+          APK_PATH=$(find apps/kp-astro-android/android-app/app/build/outputs/apk -name "*.apk" | head -1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          ls -la "$APK_PATH"
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kp-divination-signed-apk
+          path: ${{ steps.find-apk.outputs.apk_path }}
+          retention-days: 90
+          if-no-files-found: error
+
+      # ─────────── 8. Release on tag ───────────
+      - name: Release APK on tag
+        if: startsWith(github.ref, 'refs/tags/kp-divination-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.find-apk.outputs.apk_path }}
+          generate_release_notes: true
+          name: KP Divination ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────── Smoke test the web app ───────────
+  web-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: JS syntax check
+        working-directory: apps/kp-astro-android/web-app
+        run: |
+          for f in src/*.js; do
+            node --check "$f" && echo "OK: $f"
+          done
+      - name: Smoke test (stub + KpEngine)
+        working-directory: apps/kp-astro-android/web-app
+        run: |
+          cat > /tmp/smoke.js <<'SMOKE'
+          global.window = global;
+          const path = require('path');
+          require(path.join(process.cwd(), 'src/xalen-stub.js'));
+          require(path.join(process.cwd(), 'src/kp-engine.js'));
+          (async () => {
+            const { XalenWasmStub, KpEngine } = global;
+            const inst = new XalenWasmStub();
+            const xalen = {
+              mode: 'stub',
+              tropicalLongitude: (...a) => inst.tropicalLongitude(...a),
+              siderealLongitude: (...a) => inst.siderealLongitude(...a),
+              planetPositionJson: (...a) => inst.planetPositionJson(...a),
+              fullChartJson: (...a) => inst.fullChartJson(...a),
+              panchangJson: (...a) => inst.panchangJson(...a),
+              housesJson: (...a) => inst.housesJson(...a),
+              getNakshatra: (...a) => inst.getNakshatra(...a),
+              nakshatraInfoJson: (...a) => inst.nakshatraInfoJson(...a),
+              getRashi: (...a) => inst.getRashi(...a),
+              vimshottariDasha: (...a) => inst.vimshottariDasha(...a),
+              divisionalChart: (...a) => inst.divisionalChart(...a),
+              compatibility: (...a) => inst.compatibility(...a),
+              julianDay: (...a) => XalenWasmStub.julianDay(...a),
+              ayanamsaDeg: (...a) => XalenWasmStub.ayanamsaDeg(...a),
+              deltaT: (...a) => XalenWasmStub.deltaT(...a),
+              bodyName: (...a) => XalenWasmStub.bodyName(...a),
+            };
+            const r = await KpEngine.computeChart(xalen, {
+              year: 2025, month: 8, day: 6, hour: 14, minute: 30,
+              tzOffsetMin: 480, lat: 31.2304, lon: 121.4737,
+              number: 123, topic: '神秘学', gender: 'male',
+              ayanamsaId: 2, houseSystem: 2
+            });
+            const md = KpEngine.buildDiagnosticMarkdown(r);
+            if (md.length < 1000) throw new Error('Markdown too short');
+            if (r.rulingPlanets.length < 5) throw new Error('RPs missing');
+            if (!r.dasha || !r.dasha.pratyantardasha) throw new Error('Pratyantardasha missing');
+            console.log('Smoke OK. MD len:', md.length, '| Aya:', r.meta.ayanamsa.toFixed(4), '| RP count:', r.rulingPlanets.length);
+          })().catch(e => { console.error(e); process.exit(1); });
+          SMOKE
+          node /tmp/smoke.js

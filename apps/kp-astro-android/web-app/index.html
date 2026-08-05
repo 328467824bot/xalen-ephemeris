@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f0d1a" />
+  <meta name="color-scheme" content="dark" />
+  <title>KP 即时占卜排盘 · XALEN</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <div class="header-logo">🌙</div>
+      <div style="flex:1">
+        <h1>KP 即时占卜 <span class="muted" style="font-weight:400">· XALEN</span></h1>
+        <div class="subtitle">基于 XALEN Ephemeris · KP (Krishnamurti Paddhati) · LLM 辅助解读</div>
+      </div>
+    </div>
+    <div class="header-pills">
+      <span class="pill" data-group="aya" data-value="0">Lahiri 岁差</span>
+      <span class="pill active" data-group="aya" data-value="2">KP 岁差</span>
+      <span class="pill" data-group="house" data-value="0">Whole-Sign</span>
+      <span class="pill active" data-group="house" data-value="2">Placidus</span>
+    </div>
+    <div class="engine-row">
+      <span id="engine-status" class="loading">正在加载 XALEN…</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="error-banner"></div>
+
+    <form id="form-cast" class="form-card">
+      <h2>排盘参数</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="year">年</label>
+          <input type="number" id="year" min="1800" max="2200" value="2025" required />
+        </div>
+        <div class="field">
+          <label for="month">月</label>
+          <input type="number" id="month" min="1" max="12" value="8" required />
+        </div>
+        <div class="field">
+          <label for="day">日</label>
+          <input type="number" id="day" min="1" max="31" value="6" required />
+        </div>
+        <div class="field">
+          <label for="hour">时</label>
+          <input type="number" id="hour" min="0" max="23" value="14" required />
+        </div>
+        <div class="field">
+          <label for="minute">分</label>
+          <input type="number" id="minute" min="0" max="59" value="30" required />
+        </div>
+        <div class="field">
+          <label for="tz">时区 (UTC 偏移，分钟)</label>
+          <input type="number" id="tz" value="480" step="15" required />
+          <span class="muted" style="font-size:11px">东八区 = 480，西八区 = -480</span>
+        </div>
+        <div class="field">
+          <label for="lat">纬度</label>
+          <input type="number" id="lat" step="0.0001" value="31.2304" required />
+        </div>
+        <div class="field">
+          <label for="lon">经度</label>
+          <input type="number" id="lon" step="0.0001" value="121.4737" required />
+        </div>
+        <div class="field">
+          <label for="number">数字起卦 (1-249)</label>
+          <input type="number" id="number" min="0" max="9999" value="123" placeholder="留空则不使用" />
+        </div>
+        <div class="field">
+          <label for="gender">性别</label>
+          <select id="gender">
+            <option value="">未指定</option>
+            <option value="male">男</option>
+            <option value="female">女</option>
+          </select>
+        </div>
+        <div class="field field-full">
+          <label for="topic">占问事项</label>
+          <input type="text" id="topic" placeholder="例如：神秘学、占星、秘术 / 婚姻 / 工作 / 健康" />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" id="btn-now" class="btn">⏱ 现在时间</button>
+        <button type="button" id="btn-gps" class="btn">📍 GPS 自动填充</button>
+      </div>
+      <button type="submit" id="btn-cast" class="btn primary">立即排盘</button>
+    </form>
+
+    <div id="result"></div>
+
+    <div class="footer-status">
+      100% 本地离线计算 · XALEN Ephemeris · KP Krishnamurti Paddhati
+    </div>
+  </main>
+
+  <!-- 底部固定操作栏 -->
+  <div class="bottom-bar">
+    <button id="btn-bar-recast" class="btn">🔄 重新排盘</button>
+    <button id="btn-bar-copy-llm" class="btn primary">📋 复制 LLM 文本</button>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module">
+    import './src/xalen-stub.js';
+    import './src/xalen-bridge.js';
+    import './src/kp-engine.js';
+    import './src/ui-render.js';
+    import './src/app.js';
+  </script>
+</body>
+</html>

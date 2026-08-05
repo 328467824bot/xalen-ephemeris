@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">KP 占星</string>
-    <string name="de440_pick">加载 DE440S 星历文件</string>
-    <string name="de440_loaded">DE440S 已加载（%1$s MB）</string>
-    <string name="de440_unloaded">使用内置解析星历（VSOP87 截断级数）</string>
-    <string name="de440_error">DE440S 加载失败：%1$s</string>
-</resources>

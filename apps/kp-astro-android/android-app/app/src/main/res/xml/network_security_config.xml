@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 网络安全配置 — 完全离线应用，禁止所有明文/外部网络访问 -->
+<network-security-config>
+    <!-- 禁止明文 HTTP（虽然应用本身不用网络，但 WebView 加载外部 URL 时遵守此配置） -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <!-- file:// 协议不受此限制 -->
+</network-security-config>

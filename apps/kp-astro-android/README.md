@@ -1,130 +1,218 @@
-# KP Astrology Android App · XALEN 的 KP 占星原生 Android 壳
+# KP 即时占卜 Android · XALEN Powered
 
-[![Build APK](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-android.yml/badge.svg)](https://github.com/328467824bot/xalen-ephemeris/actions/workflows/kp-astro-android.yml)
+> 旧版《KP 即时占卜排盘 · LLM 辅助工具》HTML 应用的 **XALEN 重构版**，封装为 **Kotlin 原生 Android APK**。
+> 网页做 UI 与计算（XALEN WASM），原生层只做 JavaScript 做不好的事（剪贴板 / 文件导出 / 分享 / Toast / 振动）。
 
-`apps/kp-astro-android/` 是 [XALEN Ephemeris](../../) 的 **KP (Krishnamurti Paddhati) 占星 Android 应用**，原生 Android 壳 + WebView 嵌套 KP Web 应用，提供 DE440S 高精度星历下载与解析。
+[![Build APK](https://github.com/328467824bot/kp-divination-android/actions/workflows/build.yml/badge.svg)](.github/workflows/build.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-## 架构
+## 这是什么
+
+一个**纯离线**的 KP (Krishnamurti Paddhati) 占星即时排盘工具，特点：
+
+- **计算引擎**：[XALEN Ephemeris](https://github.com/vedika-io/xalen-ephemeris) — 纯 Rust 天文库，编译为 WebAssembly 在 WebView 内运行
+- **UI**：深色主题网页（HTML + 原生 JS），打包在 APK 的 `assets/web/` 中
+- **复制 / 导出 / 分享**：通过 `@JavascriptInterface` 走 Android 原生接口（`ClipboardManager` / `Intent.ACTION_SEND` / `Storage Access Framework`）
+- **完全离线**：无任何网络请求，无 INTERNET 权限，所有资源（HTML/JS/CSS/WASM）内置
+
+### 与现有 `kp-astro-android` 的区别
+
+| 维度 | kp-astro-android（已有） | kp-divination-android（本项目） |
+|---|---|---|
+| 架构 | 纯原生 Compose UI + JNI 桥 | **WebView 混合**（网页 + 原生壳） |
+| 计算调用 | Rust → JNI → Kotlin 直接调用 | Rust → WASM → JS（在 WebView 内） |
+| UI 实现 | Jetpack Compose + Material 3 | HTML + CSS + Vanilla JS |
+| 复制功能 | Kotlin ClipboardManager | JS → `@JavascriptInterface` → Kotlin |
+| 星历文件 | DE440S.BSP（32MB JPL 内置） | 无（XALEN 是解析公式，无数据文件） |
+| 适用场景 | 高性能 / 原生体验 | 跨平台 UI 复用 / 快速迭代 / LLM 友好文本输出 |
+
+## 功能
+
+### KP 占星核心
+
+- **9 行星位置**（Sun/Moon/Mercury/Venus/Mars/Jupiter/Saturn/Rahu/Ketu）
+  - Sidereal 经度（Lahiri ayanamsa）
+  - 星座 (Rashi) + 星座主
+  - 星宿 (Nakshatra) + Pada + 星宿主
+  - KP 子主 (Sub-lord) + 子之子主 (Sub-sub-lord)
+  - 逆行标记
+
+- **7 大统治星 (Ruling Planets, RP)**
+  - 上升星座主 / 上升星宿主
+  - 月亮星座主 / 月亮星宿主
+  - 星期主星
+  - Rahu/Ketu 代理规则
+  - 强度评分（吉凶 + 自我主宰 + 逆行）
+
+- **五层征象星 (Significators)** — 12 宫逐一分析
+  - 落座主星 / 同宫星 / 相位星 / 星宿主 / 深层星主
+
+- **数字起卦 (1-249)** — KP 编号到星宿映射
+
+- **Vimshottari 推运** — 当前大运 (Mahadasha) / 副运 (Antardasha)
+
+- **Panchang** — Tithi / Vara / Nakshatra / Yoga / Karana
+
+### 应用层
+
+- **输入参数**：日期时间 + 时区 + 经纬度（GPS 自动填充）+ 数字 + 占问事项 + 性别
+- **复制诊断数据**：一键复制 Markdown 格式 → 粘贴到 ChatGPT / Claude 进行 KP 解读
+- **导出排盘文件**：通过 SAF（系统文件选择器）保存为 `.md` 文件
+- **分享**：通过 `Intent.ACTION_SEND` 调起系统分享面板
+- **振动反馈**：成功操作触发短振动
+
+## 技术栈
+
+| 层 | 技术 |
+|---|---|
+| 原生 UI 壳 | Kotlin + Android WebView（无 Compose） |
+| 原生接口 | `@JavascriptInterface` 注入 `window.AndroidBridge` |
+| 网页 UI | HTML5 + CSS3 + Vanilla JS (ES Modules) |
+| 计算 | XALEN WASM（`xalen-wasm` crate 编译产物） |
+| 降级实现 | `xalen-stub.js`（纯 JS 简化版，便于本地预览） |
+| 构建 | Gradle 8.9 + AGP 8.7.2 + Kotlin 2.0.21 |
+| CI | GitHub Actions：`wasm-pack` + `gradle assembleDebug` |
+| minSdk | 24（Android 7.0，WebView 80+ 支持 WASM） |
+
+## 目录结构
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  Android Native Shell (Kotlin)                       │
-│  ├─ MainActivity.kt       — WebView 容器             │
-│  ├─ De440Bridge.kt        — JS ↔ Native 桥接         │
-│  ├─ De440Parser.kt        — JPL DE440S 二进制解析器  │
-│  └─ AnalyticalEphemeris.kt — VSOP87 解析星历降级方案 │
-└──────────────────────────────────────────────────────┘
-                       ↓ @JavascriptInterface
-┌──────────────────────────────────────────────────────┐
-│  WebView → assets/web/                               │
-│  ├─ index.html           — 主页面 + FAB 桥接面板     │
-│  ├─ kp-astro.js          — Web 应用主脚本 (Kotlin/JS)│
-│  ├─ kotlin-kotlin-stdlib.js                          │
-│  └─ kotlinx-html.js                                 │
-└──────────────────────────────────────────────────────┘
+kp-divination-android/
+├── web-app/                              # 网页源码（计算与 UI）
+│   ├── index.html                        # 入口
+│   ├── src/
+│   │   ├── app.js                        # 主入口：表单事件 + Native 桥接
+│   │   ├── xalen-bridge.js               # XALEN WASM 加载器 + 门面
+│   │   ├── xalen-stub.js                 # 纯 JS 降级实现（本地预览用）
+│   │   ├── kp-engine.js                  # KP 计算引擎（征象星/RP/dasha）
+│   │   ├── ui-render.js                  # 排盘结果 UI 渲染
+│   │   └── styles.css                    # 深色主题
+│   └── pkg/                              # CI 注入的 XALEN WASM 产物
+│       └── .gitkeep
+│
+├── android-app/                          # Kotlin Android WebView 壳
+│   ├── settings.gradle.kts
+│   ├── build.gradle.kts
+│   ├── gradle.properties
+│   ├── gradle/
+│   │   ├── libs.versions.toml
+│   │   └── wrapper/gradle-wrapper.properties
+│   ├── gradlew / gradlew.bat
+│   └── app/
+│       ├── build.gradle.kts              # 含 syncWebApp 任务（web-app → assets/web）
+│       ├── proguard-rules.pro
+│       └── src/main/
+│           ├── AndroidManifest.xml
+│           ├── assets/web/.gitkeep       # 由 syncWebApp 自动填充
+│           ├── res/                      # 图标 / 主题 / 颜色 / 字符串
+│           └── java/io/zhipu/kpdivination/
+│               ├── MainActivity.kt       # WebView 容器
+│               ├── WebAppInterface.kt    # @JavascriptInterface：复制/分享/导出/Toast/振动
+│               └── util/FileHelper.kt    # SAF 文件写入
+│
+├── .github/workflows/build.yml           # CI：编译 XALEN WASM + 构建 APK
+└── docs/
+    ├── ARCHITECTURE.md                   # 架构详解
+    ├── BUILD.md                          # 本地 / CI 构建指南
+    └── XALEN-INTEGRATION.md              # XALEN 集成细节
 ```
 
-## 特性
+## 快速开始
 
-### 来自原生壳
-- ✅ **DE440S 高精度星历**：从 NASA JPL 下载 32MB 的 `de440s.bsp` 文件，Chebyshev 多项式插值，精度亚角秒级
-- ✅ **优雅降级**：无 DE440S 文件时自动用 VSOP87 截断级数（精度 < 0.3°）
-- ✅ **断点续传下载**：内存优先 + 原子写策略，支持暂停 / 继续 / 取消
-- ✅ **自动加载**：DE440S 文件存到 `Android/data/com.xalen.kpastro/files/ephemeris/`，下次启动自动加载
-- ✅ **Pinch-zoom**：双指缩放已开启
-- ✅ **支持 Android 7.0+**（minSdk 24, targetSdk 34）
+### 用户：直接装 APK
 
-### 来自嵌套的 Web 应用（v2.0）
-- ✅ **完整 KP 理论**：249 子区表、星主 / 子主 / 子子主、宫首子星分析
-- ✅ **ABCDE 五级象征星**：驻守星之宿主 → 驻守星 → 宫主之宿主 → 宫主 → 相位星
-- ✅ **执掌行星 RP**：日主 + 月亮宫主/宿主 + 上升宫主/宿主 + Rahu/Ketu 代理
-- ✅ **Vimshottari Dasha**：大运 → 小运 → 过运 三层时间轴
-- ✅ **KP Horary 问卜**：1-249 数字问卜
-- ✅ **行星庙旺判定**：9 级 dignity
-- ✅ **逆行判定**：中心差分计算瞬时角速度
-- ✅ **5 种岁差**：KP / Lahiri / Raman / Fagan-Bradley / True Chitra，按 JD 动态计算
-- ✅ **真 Placidus 宫位制**：迭代算法（含章动修正）
-- ✅ **调试面板**：手动覆盖任意行星 / 宫首 / 上升点
-- ✅ **JSON 导入导出**：保存 / 恢复任意星盘配置
+从 [Actions 页面](https://github.com/328467824bot/kp-divination-android/actions) 下载最新构建的 `kp-divination-debug-apk` artifact，安装到 Android 7.0+ 设备即可。
 
-## 构建
+### 开发者：本地运行网页预览
 
-### 本地构建
-
-需要：
-- JDK 17+（CI 用 JDK 21）
-- Android SDK 34（compileSdk）
-- Gradle 8.10.2（项目自带 wrapper）
+无需 Android Studio，直接用浏览器看 UI 与计算逻辑：
 
 ```bash
-cd apps/kp-astro-android
+cd web-app
+python3 -m http.server 8080
+# 浏览器打开 http://localhost:8080
+```
 
-# Debug APK
+此时使用的是 `xalen-stub.js`（纯 JS 简化实现），精度不如真实 XALEN，但 KP 结构性输出（征象星 / RP / 子主）正确。
+
+### 开发者：本地构建 APK
+
+详见 [docs/BUILD.md](docs/BUILD.md)。简述：
+
+```bash
+# 1. 编译 XALEN WASM（需要 Rust + wasm-pack）
+git clone https://github.com/vedika-io/xalen-ephemeris.git /tmp/xalen
+cd /tmp/xalen/crates/xalen-wasm
+wasm-pack build --target web --release
+cp -v pkg/* /path/to/kp-divination-android/web-app/pkg/
+
+# 2. 构建 APK（需要 JDK 17 + Android SDK）
+cd /path/to/kp-divination-android/android-app
 ./gradlew assembleDebug
 # 产物：app/build/outputs/apk/debug/app-debug.apk
-
-# Release APK（用项目自带的 keystore 签名）
-./gradlew assembleRelease
-# 产物：app/build/outputs/apk/release/app-release.apk
 ```
 
-### CI 构建
+## 架构亮点
 
-GitHub Actions workflow `.github/workflows/kp-astro-android.yml` 在每次推送或 PR 时自动编译 APK，并上传为 artifact。下载后可直接安装到 Android 设备。
+### 1. JS ↔ Kotlin 桥接（复制功能原生实现）
 
-## 安装到设备
-
-```bash
-# 下载 CI 构建的 APK artifact（zip 解压后得到 app-debug.apk 或 app-release.apk）
-adb install -r app-debug.apk
+```kotlin
+// WebAppInterface.kt
+@JavascriptInterface
+fun copyToClipboard(text: String?): Boolean {
+    val clip = ClipData.newPlainText("KP Divination", text)
+    clipboardManager.setPrimaryClip(clip)
+    return true
+}
 ```
 
-或在 Android 设备上直接点击 APK 文件安装（需开启「未知来源应用」权限）。
-
-## 与 XALEN Rust 库的关系
-
-本应用是天文学算法的 **Kotlin/JS + Kotlin/Android** 双层实现：
-
-| XALEN Rust | 本应用 Kotlin |
-|---|---|
-| `crates/xalen-vedic/src/kp.rs` | Web 端 `KpEngine.kt` |
-| `crates/xalen-vedic/src/dasha.rs` | Web 端 `vimshottariDasha` |
-| `crates/xalen-vedic/src/nakshatra.rs` | Web 端 `Nakshatra` enum |
-| `crates/xalen-core/src/analytical/` | 共享 `AnalyticalEphemeris.kt` |
-| `crates/xalen-jpl/de440.rs` | Android 端 `De440Parser.kt` |
-
-**精度对比**：
-- 内置 VSOP87 截断级数：太阳 < 0.01°，月亮 < 0.2°，火星 < 0.1°
-- 加载 DE440S 文件后：所有行星达到亚角秒级（与 Swiss Ephemeris 同精度）
-
-## 重新构建 Web 资源
-
-如果修改了 Web 端 Kotlin 代码（在 `apps/kp-astro-web/`），需要重新编译并复制到 Android 的 `assets/web/`：
-
-```bash
-# 1. 构建 Web 资源
-cd apps/kp-astro-web
-./gradlew assembleDistrib
-
-# 2. 复制到 Android 工程
-cp build/distrib/* ../kp-astro-android/app/src/main/assets/web/
-
-# 3. 重新编译 APK
-cd ../kp-astro-android
-./gradlew assembleDebug
+```javascript
+// web-app/src/app.js
+const Native = {
+  async copy(text) {
+    if (window.AndroidBridge?.copyToClipboard) {
+      return window.AndroidBridge.copyToClipboard(text);  // 走原生
+    }
+    await navigator.clipboard.writeText(text);  // 浏览器降级
+  }
+};
 ```
 
-## 许可证
+### 2. XALEN WASM 桥接（带降级）
 
-Apache-2.0（与 XALEN 主仓库一致），见 [../../LICENSE](../../LICENSE)。
-
-## 签名 keystore
-
-项目自带一个调试用的 release keystore（`keystore/kp-astro-release.keystore`），密码 `kpastro123`。**仅用于开发/测试**，正式发布请替换为你自己的 keystore。
-
-```bash
-# 生成自己的 release keystore
-keytool -genkeypair -v -keystore my-release.keystore -alias my-key -keyalg RSA -keysize 2048 -validity 10000
-
-# 然后修改 keystore.properties 指向新文件
+```javascript
+// xalen-bridge.js — 自动选择 WASM 或 stub
+const candidates = ['./pkg/xalen_wasm.js', 'pkg/xalen_wasm.js'];
+for (const path of candidates) {
+  try {
+    const mod = await import(path);
+    if (mod.XalenWasm) return new mod.XalenWasm();  // 真实 WASM
+  } catch {}
+}
+return new XalenWasmStub();  // 降级到纯 JS
 ```
+
+### 3. CI 一键构建
+
+```yaml
+# .github/workflows/build.yml
+- uses: actions/checkout@v4
+  with:
+    repository: vedika-io/xalen-ephemeris
+    path: upstream/xalen-ephemeris
+- run: wasm-pack build --target web --release
+  working-directory: upstream/xalen-ephemeris/crates/xalen-wasm
+- run: cp -v pkg/* web-app/pkg/
+- run: ./gradlew assembleDebug
+  working-directory: android-app
+```
+
+## 许可
+
+Apache-2.0（与 XALEN 主库一致）
+
+## 致谢
+
+- [XALEN Ephemeris](https://github.com/vedika-io/xalen-ephemeris) — Pure-Rust 天文星历库
+- [wasm-pack](https://rustwasm.github.io/wasm-pack/) — Rust → WASM 工具链
+- 原 HTML 应用作者 — KP 占星逻辑参考
