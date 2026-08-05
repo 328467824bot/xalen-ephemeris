@@ -1271,8 +1271,8 @@
     lines.push('');
 
     // 7 RP
-    const rpCount = input.rpMode === 'extended7' ? 7 : 5;
-    const rpLabel = input.rpMode === 'extended7' ? '7 (Extended)' : '5 (KSK Classic)';
+    const rpCount = inp.rpMode === 'extended7' ? 7 : 5;
+    const rpLabel = inp.rpMode === 'extended7' ? '7 (Extended)' : '5 (KSK Classic)';
     lines.push(`⚖️ The ${rpCount} Ruling Planets (The Divine Judges) — ${rpLabel}`);
     lines.push('');
     lines.push(`In advanced KP Prasna, these ruling planets act as the ultimate filters for timing and confirming the event's authenticity.`);
