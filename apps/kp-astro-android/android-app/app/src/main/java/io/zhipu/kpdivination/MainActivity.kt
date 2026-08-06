@@ -60,6 +60,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 请求 GPS 运行时权限（Android 6.0+ 需要）
+        requestLocationPermission()
+
         // 状态栏沉浸式（深色主题，状态栏文字浅色）
         configureSystemBars()
 
@@ -227,6 +230,45 @@ class MainActivity : ComponentActivity() {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    // ───────────────────────── GPS 运行时权限 ─────────────────────────
+
+    private val LOCATION_PERMISSION_REQUEST = 1001
+
+    private fun requestLocationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (fine != android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                coarse != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Log.i(TAG, "请求 GPS 运行时权限")
+                requestPermissions(
+                    arrayOf(
+                        android.Manifest.permission.ACCESS_FINE_LOCATION,
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION
+                    ),
+                    LOCATION_PERMISSION_REQUEST
+                )
+            } else {
+                Log.i(TAG, "GPS 权限已授予")
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Log.i(TAG, "GPS 权限已授予（用户同意）")
+            } else {
+                Log.w(TAG, "GPS 权限被拒绝")
+            }
+        }
     }
 
     companion object {
