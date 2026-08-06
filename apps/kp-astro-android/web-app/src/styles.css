@@ -277,18 +277,41 @@ main {
 .tag.warn { color: var(--warning); border-color: var(--warning); }
 
 /* ── Tables ── */
+/* 手机端不用表格，用卡片列表 */
 .table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 0 -4px;
-  padding: 0 4px;
-  /* 横向滚动提示 */
-  background: linear-gradient(90deg, var(--bg-card) 0%, transparent 5%, transparent 95%, var(--bg-card) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .kp-table {
   width: 100%; border-collapse: collapse;
   font-size: 12px;
-  min-width: 500px;  /* 强制最小宽度，触发横向滚动 */
+  display: none;  /* 隐藏表格，用 .data-row 替代 */
+}
+
+/* 数据行（替代表格） */
+.data-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border-radius: 6px;
+  font-size: 12px;
+  align-items: center;
+}
+.data-row .dr-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  min-width: 50px;
+}
+.data-row .dr-value {
+  color: var(--text);
+  font-weight: 500;
+}
+.data-row .dr-value.sub-lord {
+  color: var(--accent-strong);
+  font-weight: 600;
 }
 .kp-table th, .kp-table td {
   padding: 8px 10px;

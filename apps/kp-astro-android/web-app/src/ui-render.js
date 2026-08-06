@@ -46,7 +46,7 @@
     const cls = PLANET_COLOR_CLASS[name] || (isAsc ? 'ascendant' : '');
     const glyph = showGlyph && (PLANET_GLYPHS[name] || (isAsc ? 'ASC' : ''));
     const cn = PLANET_CN[name] || '';
-    const label = cn ? `${cn} ${esc(name)}` : esc(name);
+    const label = cn ? `${cn}` : esc(name);  // 只显示中文，不显示英文（英文在 LLM 文本里有）
     return `<span class="planet-badge ${cls}${retro ? ' retro' : ''}">${glyph ? `<span class="glyph">${glyph}</span>` : ''}${label}</span>`;
   }
 
@@ -111,28 +111,23 @@
     const rows = PLANET_NAMES.map(name => {
       const p = planets[name];
       if (!p) return '';
+      const retro = p.isRetrograde ? ' ℞' : '';
       return `
-        <tr>
-          <td>${planetBadge(name, { retro: p.isRetrograde })}</td>
-          <td class="mono">${fmtDeg(p.longitude)}</td>
-          <td>${esc(p.rashiName)} <span class="muted">(${esc(p.rashiLord)})</span></td>
-          <td>${esc(p.nakshatraName)} <span class="muted">P${p.pada}</span></td>
-          <td>${esc(p.nakshatraLord)}</td>
-          <td class="sub-lord">${esc(p.subLord)}</td>
-        </tr>
+        <div class="data-row">
+          <span class="dr-value">${planetBadge(name, { retro: p.isRetrograde })}${retro}</span>
+          <span class="dr-label">经度</span><span class="dr-value mono">${fmtDeg(p.longitude)}</span>
+          <span class="dr-label">星座</span><span class="dr-value">${esc(p.rashiName)}</span>
+          <span class="dr-label">星宿</span><span class="dr-value">${esc(p.nakshatraName)} P${p.pada}</span>
+          <span class="dr-label">星宿主</span><span class="dr-value">${planetBadge(p.nakshatraLord)}</span>
+          <span class="dr-label">子主</span><span class="dr-value sub-lord">${planetBadge(p.subLord)}</span>
+        </div>
       `;
     }).join('');
     return `
       <section class="card">
-        <div class="card-header"><h2>🪐 行星位置 / Planet Positions (Sidereal)
-        <div class="table-wrap">
-          <table class="kp-table">
-            <thead>
-              <tr><th>行星</th><th>经度</th><th>星座 (主)</th><th>星宿 (Pada)</th><th>星宿主</th><th class="sub-lord">子主</th></tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <div class="card-header"><h2>🪐 行星位置 / Planet Positions</h2></div>
+        <p class="hint">恒星制 / Sidereal · 关注子主 / Focus on Sub Lord</p>
+        <div class="table-wrap">${rows}</div>
       </section>
     `;
   }
@@ -163,25 +158,21 @@
 
   function renderHouses(houses) {
     const rows = houses.map(h => `
-      <tr>
-        <td class="center">${h.number === 1 ? `${h.number} (升)` : h.number}</td>
-        <td class="mono">${fmtDeg(h.cuspDeg)}</td>
-        <td>${esc(h.signName)} <span class="muted">(${esc(h.lord)})</span></td>
-        <td>${esc(h.cuspNakshatra)}</td>
-        <td>${esc(h.cuspNakshatraLord)}</td>
-        <td class="sub-lord">${esc(h.cuspSubLord)}</td>
-      </tr>
+      <div class="data-row">
+        <span class="dr-value" style="min-width:28px;font-weight:700">${h.number === 1 ? '1升' : h.number}</span>
+        <span class="dr-label">经度</span><span class="dr-value mono">${fmtDeg(h.cuspDeg)}</span>
+        <span class="dr-label">星座</span><span class="dr-value">${esc(h.signName)}</span>
+        <span class="dr-label">主</span><span class="dr-value">${planetBadge(h.lord)}</span>
+        <span class="dr-label">星宿</span><span class="dr-value">${esc(h.cuspNakshatra)}</span>
+        <span class="dr-label">星宿主</span><span class="dr-value">${planetBadge(h.cuspNakshatraLord)}</span>
+        <span class="dr-label">宫头子主</span><span class="dr-value sub-lord">${planetBadge(h.cuspSubLord)}</span>
+      </div>
     `).join('');
     return `
       <section class="card">
-        <div class="card-header"><h2>🏛️ 宫头位置 / Cuspal Positions
-        <p class="hint">宫头子主 (CSL) 是判断宫位事项是否成真的最终决定星。</p>
-        <div class="table-wrap">
-          <table class="kp-table">
-            <thead><tr><th>宫</th><th>经度</th><th>星座 (主)</th><th>星宿</th><th>星宿主</th><th class="sub-lord">宫头子主</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <div class="card-header"><h2>🏛️ 宫头位置 / Cuspal Positions</h2></div>
+        <p class="hint">宫头子主 / CSL 是判断宫位事项是否成真的最终决定星</p>
+        <div class="table-wrap">${rows}</div>
       </section>
     `;
   }
@@ -357,86 +348,65 @@
     if (!csl || !csl.length) return '';
     const rows = csl.map(c => {
       const pMark = c.promise === 'Positive' ? '✅' : c.promise === 'Negative' ? '❌' : '⚠️';
-      return `<tr>
-        <td class="center">${c.house}</td>
-        <td>${esc(c.signLord)}</td>
-        <td>${esc(c.starLord)}</td>
-        <td class="sub-lord">${esc(c.subLord)}</td>
-        <td class="center">${pMark} ${esc(c.promise)}</td>
-        <td class="center">${c.cslHouse || '—'}</td>
-        <td class="center">${c.cslRules}</td>
-        <td>${esc(c.cslStarLord || '—')}</td>
-        <td class="center">${c.starLordHouse || '—'}</td>
-      </tr>`;
+      const promiseCn = c.promise === 'Positive' ? '吉' : c.promise === 'Negative' ? '凶' : '混合';
+      return `<div class="data-row">
+        <span class="dr-value" style="min-width:28px;font-weight:700">${c.house}</span>
+        <span class="dr-label">星座主</span><span class="dr-value">${planetBadge(c.signLord)}</span>
+        <span class="dr-label">星宿主</span><span class="dr-value">${planetBadge(c.starLord)}</span>
+        <span class="dr-label">子主</span><span class="dr-value sub-lord">${planetBadge(c.subLord)}</span>
+        <span class="dr-label">许诺</span><span class="dr-value">${pMark} ${promiseCn}</span>
+        <span class="dr-label">所在宫</span><span class="dr-value">${c.cslHouse || '—'}</span>
+        <span class="dr-label">主宰宫</span><span class="dr-value">${c.cslRules}</span>
+      </div>`;
     }).join('');
     return `
       <section class="card">
-        <div class="card-header"><h2>🔍 CSL 宫头子主分析 / Cuspal Sub-Lord Analysis</h2></div>
-        <p class="hint">每宫的子主（CSL）是判断该宫事项是否成真的最终决定星。Promise: ✅Positive=吉 ❌Negative=凶 ⚠️Mixed=混合</p>
-        <div class="table-wrap">
-          <table class="kp-table">
-            <thead><tr><th>宫 / House</th><th>星座主 / Sign Lord</th><th>星宿主 / Star Lord</th><th class="sub-lord">子主 / Sub Lord</th><th>许诺 / Promise</th><th>CSL所在宫 / Pos</th><th>CSL主宰宫 / Rules</th><th>CSL星宿主 / Star</th><th>星宿主所在宫 / Star Pos</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <div class="card-header"><h2>🔍 CSL 宫头子主分析 / Cuspal Sub-Lord</h2></div>
+        <p class="hint">✅吉 / ❌凶 / ⚠️混合</p>
+        <div class="table-wrap">${rows}</div>
       </section>
     `;
   }
-
-  // ───────────────────────── 宫位许诺 ─────────────────────────
 
   function renderHousePromises(hp) {
     if (!hp || !hp.length) return '';
     const rows = hp.map(h => {
       const mark = h.promise === 'Positive' ? '✅' : h.promise === 'Negative' ? '❌' : '⚠️';
-      return `<tr>
-        <td class="center">${h.house}</td>
-        <td>${planetBadge(h.csl)}</td>
-        <td class="center">${mark} ${esc(h.promise)}</td>
-        <td class="center">${h.favCount}</td>
-        <td class="center">${h.unfavCount}</td>
-      </tr>`;
+      const cn = h.promise === 'Positive' ? '吉' : h.promise === 'Negative' ? '凶' : '混合';
+      return `<div class="data-row">
+        <span class="dr-value" style="min-width:28px;font-weight:700">${h.house}</span>
+        <span class="dr-label">CSL</span><span class="dr-value">${planetBadge(h.csl)}</span>
+        <span class="dr-label">许诺</span><span class="dr-value">${mark} ${cn}</span>
+        <span class="dr-label">吉${h.favCount}</span><span class="dr-label">凶${h.unfavCount}</span>
+      </div>`;
     }).join('');
     return `
       <section class="card">
         <div class="card-header"><h2>🎯 宫位许诺 / House Promises</h2></div>
-        <p class="hint">每宫的 CSL 是否许诺该宫事项。基于 XALEN HousePromise。</p>
-        <div class="table-wrap">
-          <table class="kp-table">
-            <thead><tr><th>宫 / House</th><th>CSL</th><th>许诺 / Promise</th><th>吉 / Fav</th><th>凶 / Unfav</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <p class="hint">每宫 CSL 是否许诺该宫事项</p>
+        <div class="table-wrap">${rows}</div>
       </section>
     `;
   }
-
-  // ───────────────────────── 事件许诺 ─────────────────────────
 
   function renderEventPromises(ep) {
     if (!ep || !ep.length) return '';
     const eventCn = { Marriage:'婚姻', Job:'工作', Health:'健康', ChildBirth:'子女', Education:'教育', ForeignTravel:'出国', Wealth:'财运', Litigation:'官司' };
     const rows = ep.map(e => {
-      const mark = e.promised ? '✅ 是' : '❌ 否';
-      return `<tr>
-        <td>${esc(eventCn[e.event] || e.event)} / ${esc(e.event)}</td>
-        <td class="center">${e.primaryHouse}</td>
-        <td>${planetBadge(e.csl)}</td>
-        <td class="center">${mark}</td>
-        <td class="center">${e.favCount}</td>
-        <td class="center">${e.negCount}</td>
-      </tr>`;
+      const mark = e.promised ? '✅' : '❌';
+      const cn = e.promised ? '是' : '否';
+      return `<div class="data-row">
+        <span class="dr-value" style="min-width:60px;font-weight:600">${esc(eventCn[e.event] || e.event)}</span>
+        <span class="dr-label">主宫</span><span class="dr-value">${e.primaryHouse}</span>
+        <span class="dr-label">CSL</span><span class="dr-value">${planetBadge(e.csl)}</span>
+        <span class="dr-label">许诺</span><span class="dr-value">${mark} ${cn}</span>
+      </div>`;
     }).join('');
     return `
       <section class="card">
         <div class="card-header"><h2>💍 事件许诺 / Event Promises</h2></div>
-        <p class="hint">8 类人生事件是否许诺。基于 XALEN KpEvent。</p>
-        <div class="table-wrap">
-          <table class="kp-table">
-            <thead><tr><th>事件 / Event</th><th>主宫 / House</th><th>CSL</th><th>许诺 / Promised</th><th>吉 / Fav</th><th>凶 / Neg</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <p class="hint">8 类人生事件是否许诺</p>
+        <div class="table-wrap">${rows}</div>
       </section>
     `;
   }
