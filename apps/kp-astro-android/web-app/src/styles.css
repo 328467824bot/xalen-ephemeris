@@ -282,10 +282,13 @@ main {
   -webkit-overflow-scrolling: touch;
   margin: 0 -4px;
   padding: 0 4px;
+  /* 横向滚动提示 */
+  background: linear-gradient(90deg, var(--bg-card) 0%, transparent 5%, transparent 95%, var(--bg-card) 100%);
 }
 .kp-table {
   width: 100%; border-collapse: collapse;
   font-size: 12px;
+  min-width: 500px;  /* 强制最小宽度，触发横向滚动 */
 }
 .kp-table th, .kp-table td {
   padding: 8px 10px;

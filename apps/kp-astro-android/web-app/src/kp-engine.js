@@ -1253,21 +1253,21 @@
     const inp = result.input;
     const m = result.meta;
 
-    lines.push(`🔮 KP Astrology Prasna (Horary) Chart Analysis Request`);
+    lines.push(`🔮 KP 占星问卦盘解读请求 / KP Astrology Prasna (Horary) Chart Analysis Request`);
     lines.push('');
-    lines.push(`📊 Meta Data (Context)`);
-    lines.push(`- Query/Question: ${esc(inp.topic || 'General Query')}`);
-    lines.push(`- Querent Gender: ${inp.gender ? inp.gender.charAt(0).toUpperCase() + inp.gender.slice(1) : 'Not Specified'}`);
+    lines.push(`📊 元数据 / Meta Data (Context)`);
+    lines.push(`- 占问事项 / Query:  ${esc(inp.topic || 'General Query')}`);
+    lines.push(`- 性别 / Gender:  ${inp.gender ? inp.gender.charAt(0).toUpperCase() + inp.gender.slice(1) : 'Not Specified'}`);
     const tzSign = inp.tzOffsetMin >= 0 ? '+' : '-';
     const tzH = Math.abs(Math.floor(inp.tzOffsetMin / 60));
     const tzM = Math.abs(inp.tzOffsetMin % 60);
-    lines.push(`- Query Time: ${inp.year}-${pad(inp.month)}-${pad(inp.day)} ${pad(inp.hour)}:${pad(inp.minute)}:${pad(inp.second || 0)} (Local Time, UTC${tzSign}${String(tzH).padStart(2,'0')}:${String(tzM).padStart(2,'0')})`);
-    lines.push(`- Location: ${inp.lat.toFixed(4)}° N, ${inp.lon.toFixed(4)}° E (Timezone Offset: ${tzSign}${tzH*60+tzM} mins)`);
+    lines.push(`- 占问时间 / Query Time:  ${inp.year}-${pad(inp.month)}-${pad(inp.day)} ${pad(inp.hour)}:${pad(inp.minute)}:${pad(inp.second || 0)} (本地时间 / Local, UTC${tzSign}${String(tzH).padStart(2,'0')}:${String(tzM).padStart(2,'0')})`);
+    lines.push(`- 地点 / Location:  ${inp.lat.toFixed(4)}° N, ${inp.lon.toFixed(4)}° E (Timezone Offset: ${tzSign}${tzH*60+tzM} mins)`);
     const ayaName = m.ayanamsaId === 1 ? 'KP Ayanamsa (Krishnamurti)' : (m.ayanamsaId === 0 ? 'Lahiri' : `Ayanamsa #${m.ayanamsaId}`);
-    lines.push(`- Ayanamsa Used: ${ayaName} — ${m.ayanamsa.toFixed(6)}°`);
-    lines.push(`- House System: ${m.houseSystem === 2 ? 'Placidus' : 'Whole-Sign'}`);
-    lines.push(`- Mode: Horary Number: ${inp.number || 'N/A'}`);
-    lines.push(`- Calculation Engine: XALEN Ephemeris (${m.xalenMode.toUpperCase()})`);
+    lines.push(`- 岁差 / Ayanamsa:  ${ayaName} — ${m.ayanamsa.toFixed(6)}°`);
+    lines.push(`- 宫位制 / House System:  ${m.houseSystem === 2 ? 'Placidus' : 'Whole-Sign'}`);
+    lines.push(`- 模式 / Mode: 问卦数字 / Horary Number:  ${inp.number || 'N/A'}`);
+    lines.push(`- 计算引擎 / Engine:  XALEN Ephemeris (${m.xalenMode.toUpperCase()})`);
     lines.push('');
 
     // 7 RP
@@ -1275,7 +1275,8 @@
     const rpLabel = inp.rpMode === 'extended7' ? '7 (Extended)' : '5 (KSK Classic)';
     lines.push(`⚖️ The ${rpCount} Ruling Planets (The Divine Judges) — ${rpLabel}`);
     lines.push('');
-    lines.push(`In advanced KP Prasna, these ruling planets act as the ultimate filters for timing and confirming the event's authenticity.`);
+    lines.push(`在 KP 问卦中，统治星是时间过滤与事件验证的终极判定星。
+In advanced KP Prasna, ruling planets are the ultimate filters for timing and confirming events.`);
     lines.push('');
     for (const rp of result.rulingPlanets) {
       lines.push(`- ${rp.rolesEn[0]}: ${rp.planet}`);
@@ -1285,9 +1286,10 @@
     // 行星位置
     lines.push(`🪐 Planet Positions (Grahas)`);
     lines.push('');
-    lines.push(`Focus on the Sub Lord to see the final result of the planet.`);
+    lines.push(`关注子主 / Sub Lord 来判断行星的最终结果。
+Focus on the Sub Lord to see the final result of the planet.`);
     lines.push('');
-    lines.push(`| Planet | Longitude | Sign | House | Sign Lord | Nakshatra | Star Lord | Sub Lord | SSL | Navamsa |`);
+    lines.push(`| 行星 / Planet | 经度 / Longitude | 星座 / Sign | 宫 / House | 星座主 / Sign Lord | 星宿 / Nakshatra | 星宿主 / Star Lord | 子主 / Sub Lord | 子子主 / SSL | D9 / Navamsa |`);
     lines.push(`|--------|-----------|------|-------|-----------|-----------|------------|----------|-----|---------|`);
     // 上升点
     const a = result.ascendant;
@@ -1307,9 +1309,10 @@
     // 宫头位置
     lines.push(`🏛️ Cuspal Positions (Bhavas) - ${m.houseSystem === 2 ? 'Placidus' : 'Whole-Sign'} System`);
     lines.push('');
-    lines.push(`The Cuspal Sub Lord (CSL) is the final deciding factor for whether a house's matters will fructify.`);
+    lines.push(`宫头子主 / CSL 是判断该宫事项是否成真的最终决定因素。
+The Cuspal Sub Lord (CSL) is the final deciding factor for whether a house's matters will fructify.`);
     lines.push('');
-    lines.push(`| Cusp | Longitude | Sign | Sign Lord | Nakshatra | Star Lord | Sub Lord (CSL) | SSL | Navamsa |`);
+    lines.push(`| 宫 / Cusp | 经度 / Longitude | 星座 / Sign | 星座主 / Sign Lord | 星宿 / Nakshatra | 星宿主 / Star Lord | 子主 / CSL | 子子主 / SSL | D9 / Navamsa |`);
     lines.push(`|------|-----------|------|-----------|-----------|------------|----------------|-----|---------|`);
     for (const h of result.houses) {
       const label = h.number === 1 ? `1st House (Asc)` : `${h.number}th House`;
@@ -1322,7 +1325,7 @@
     lines.push('');
     lines.push(`For each house: its CSL (Cuspal Sub Lord), which house the CSL planet is posited in, which houses the CSL rules (as sign lord), the CSL's Star Lord, and where that Star Lord is posited. This is the core KP significator chain.`);
     lines.push('');
-    lines.push(`| House | CSL | CSL Position (House) | CSL Rules (Houses) | CSL Star Lord | Star Lord Position (House) |`);
+    lines.push(`| 宫 / House | CSL | CSL所在宫 / Position | CSL主宰宫 / Rules | CSL星宿主 / Star Lord | 星宿主所在宫 / Star Pos |`);
     lines.push(`|-------|-----|---------------------|--------------------|---------------|---------------------------|`);
     for (const c of result.cslAnalysis) {
       lines.push(`| ${c.house} | ${c.csl} | ${c.cslHouse || '—'} | ${c.cslRules} | ${c.cslStarLord} | ${c.starLordHouse || '—'} |`);
@@ -1333,9 +1336,9 @@
     if (result.housePromises && result.housePromises.length) {
       lines.push(`🎯 House Promises (宫位许诺 — XALEN HousePromise)`);
       lines.push('');
-      lines.push(`每个宫位的 CSL（宫头子主）是否许诺该宫位的事项。Positive=吉，Negative=凶，Mixed=混合。`);
+      lines.push(`每宫 CSL 是否许诺该宫事项。✅Positive=吉 ❌Negative=凶 ⚠️Mixed=混合`);
       lines.push('');
-      lines.push(`| House | CSL | Promise | Favorable Count | Unfavorable Count |`);
+      lines.push(`| 宫 / House | CSL | 许诺 / Promise | 吉 / Fav | 凶 / Unfav |`);
       lines.push(`|-------|-----|---------|-----------------|-------------------|`);
       for (const hp of result.housePromises) {
         const promiseMark = hp.promise === 'Positive' ? '✅ Positive' : (hp.promise === 'Negative' ? '❌ Negative' : '⚠️ Mixed');
@@ -1348,9 +1351,9 @@
     if (result.eventPromises && result.eventPromises.length) {
       lines.push(`💍 Event Promises (人生事件许诺 — XALEN KpEvent)`);
       lines.push('');
-      lines.push(`8 类人生事件是否许诺。基于该事件主宫的 CSL 是否 signify 该事件的 favorable houses。`);
+      lines.push(`8 类人生事件是否许诺。基于 XALEN KpEvent。`);
       lines.push('');
-      lines.push(`| Event | Primary House | CSL | Promised | Fav Count | Neg Count |`);
+      lines.push(`| 事件 / Event | 主宫 / House | CSL | 许诺 / Promised | 吉 / Fav | 凶 / Neg |`);
       lines.push(`|-------|--------------|-----|----------|-----------|-----------|`);
       for (const ep of result.eventPromises) {
         const promisedMark = ep.promised ? '✅ Yes' : '❌ No';

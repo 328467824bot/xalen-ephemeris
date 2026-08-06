@@ -15,6 +15,9 @@
   'use strict';
 
   const { PLANET_NAMES, PLANET_GLYPHS, PLANET_COLOR_CLASS, RASHIS } = global.KpEngine;
+  // ── 双语映射 ──
+  const PLANET_CN = { Sun:"太阳", Moon:"月亮", Mercury:"水星", Venus:"金星", Mars:"火星", Jupiter:"木星", Saturn:"土星", Rahu:"罗睺", Ketu:"计都", Ascendant:"上升" };
+  const RASHI_CN = ["白羊","金牛","双子","巨蟹","狮子","处女","天秤","天蝎","射手","摩羯","水瓶","双鱼"];
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({
@@ -42,7 +45,15 @@
     const { retro, isAsc, showGlyph = true } = opts;
     const cls = PLANET_COLOR_CLASS[name] || (isAsc ? 'ascendant' : '');
     const glyph = showGlyph && (PLANET_GLYPHS[name] || (isAsc ? 'ASC' : ''));
-    return `<span class="planet-badge ${cls}${retro ? ' retro' : ''}">${glyph ? `<span class="glyph">${glyph}</span>` : ''}${esc(name)}</span>`;
+    const cn = PLANET_CN[name] || '';
+    const label = cn ? `${cn} ${esc(name)}` : esc(name);
+    return `<span class="planet-badge ${cls}${retro ? ' retro' : ''}">${glyph ? `<span class="glyph">${glyph}</span>` : ''}${label}</span>`;
+  }
+
+  // 双语星座名
+  function rashiBi(deg) {
+    const idx = Math.floor(((deg % 360 + 360) % 360) / 30);
+    return `${RASHI_CN[idx]} ${RASHIS[idx]}`;
   }
 
   function jdToDate(jd) {
@@ -554,7 +565,7 @@
   // ───────────────────────── Top-level render ─────────────────────────
 
   function renderChart(container, result) {
-    container.innerHTML = [
+    const parts = [
       renderQuickCopy(result.quickTag),
       renderMeta(result),
       renderAscendant(result.ascendant),
@@ -571,9 +582,14 @@
       renderAspects(result.aspects),
       renderPlanetStates(result.planetStates),
       renderPlanetDignity(result.planetDignity),
-      renderNumberDivination(result.numberDivination),
-      renderPanchang(result.panchang)
-    ].join('\n');
+    ];
+    // 数字起卦卡片只在有数字时显示
+    if (result.numberDivination && result.input.number) {
+      parts.push(renderNumberDivination(result.numberDivination));
+    }
+    parts.push(renderPanchang(result.panchang));
+
+    container.innerHTML = parts.join('\n');
     container.classList.add('rendered');
   }
 
