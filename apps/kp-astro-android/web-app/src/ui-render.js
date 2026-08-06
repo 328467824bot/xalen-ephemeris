@@ -126,7 +126,7 @@
     `;
   }
 
-  function renderRulingPlanets(rps) {
+  function renderRulingPlanets(rps, rpMode) {
     const cards = rps.map(rp => `
       <div class="rp-card">
         <div class="rp-role">${esc(rp.roles.join(' + '))}</div>
@@ -134,10 +134,17 @@
         <div class="rp-score">强度 ${rp.score}</div>
       </div>
     `).join('');
+    const modeLabel = rpMode === 'extended7' ? '7 颗（扩展）' : '5 颗（经典）';
     return `
       <section class="card">
-        <div class="card-header"><h2>⚖️ 7 大统治星 (Ruling Planets)</h2></div>
-        <p class="hint">时间过滤与事件真实性验证的终极判定星。强度 ≥ 5 视为强势 RP。</p>
+        <div class="card-header">
+          <h2>⚖️ 统治星 (Ruling Planets)</h2>
+          <div class="rp-toggle">
+            <button class="btn ${rpMode!=='extended7'?'primary':''}" data-rp-mode="ksk5" style="padding:3px 8px;font-size:11px">5 颗</button>
+            <button class="btn ${rpMode==='extended7'?'primary':''}" data-rp-mode="extended7" style="padding:3px 8px;font-size:11px">7 颗</button>
+          </div>
+        </div>
+        <p class="hint">当前：${modeLabel}。重复次数越多强度越高。用于时间过滤与事件验证。</p>
         <div class="rp-grid">${cards}</div>
       </section>
     `;
@@ -357,7 +364,7 @@
       renderMeta(result),
       renderAscendant(result.ascendant),
       renderPlanets(result.planets),
-      renderRulingPlanets(result.rulingPlanets),
+      renderRulingPlanets(result.rulingPlanets, result.input.rpMode),
       renderHouses(result.houses),
       renderDasha(result.dasha),
       renderDashaTimeline(result),

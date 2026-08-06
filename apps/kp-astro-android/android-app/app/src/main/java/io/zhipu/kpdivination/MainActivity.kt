@@ -153,7 +153,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // WebChromeClient：捕获 console.log / alert / prompt
+        // WebChromeClient：捕获 console.log / alert / prompt + GPS 权限
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
                 val level = when (consoleMessage.messageLevel()) {
@@ -173,6 +173,20 @@ class MainActivity : ComponentActivity() {
             ): Boolean {
                 Log.i(TAG, "JS alert: $message")
                 return super.onJsAlert(view, url, message, result)
+            }
+
+            // ── GPS 权限回调 ──
+            // WebView 的 navigator.geolocation 需要这里授权，否则即使 APP 有 GPS 权限也会失败
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: android.webkit.GeolocationPermissions.Callback?
+            ) {
+                Log.i(TAG, "GPS 权限请求: origin=$origin")
+                callback?.invoke(origin, true, false)
+            }
+
+            override fun onGeolocationPermissionsHidePrompt() {
+                Log.i(TAG, "GPS 权限请求已取消")
             }
         }
     }
