@@ -340,6 +340,201 @@
     `;
   }
 
+  // ───────────────────────── CSL 分析 ─────────────────────────
+
+  function renderCslAnalysis(csl) {
+    if (!csl || !csl.length) return '';
+    const rows = csl.map(c => {
+      const pMark = c.promise === 'Positive' ? '✅' : c.promise === 'Negative' ? '❌' : '⚠️';
+      return `<tr>
+        <td class="center">${c.house}</td>
+        <td>${esc(c.signLord)}</td>
+        <td>${esc(c.starLord)}</td>
+        <td class="sub-lord">${esc(c.subLord)}</td>
+        <td class="center">${pMark} ${esc(c.promise)}</td>
+        <td class="center">${c.cslHouse || '—'}</td>
+        <td class="center">${c.cslRules}</td>
+        <td>${esc(c.cslStarLord || '—')}</td>
+        <td class="center">${c.starLordHouse || '—'}</td>
+      </tr>`;
+    }).join('');
+    return `
+      <section class="card">
+        <div class="card-header"><h2>🔍 CSL 宫头子主分析 / Cuspal Sub-Lord Analysis</h2></div>
+        <p class="hint">每宫的子主（CSL）是判断该宫事项是否成真的最终决定星。Promise: ✅Positive=吉 ❌Negative=凶 ⚠️Mixed=混合</p>
+        <div class="table-wrap">
+          <table class="kp-table">
+            <thead><tr><th>宫 / House</th><th>星座主 / Sign Lord</th><th>星宿主 / Star Lord</th><th class="sub-lord">子主 / Sub Lord</th><th>许诺 / Promise</th><th>CSL所在宫 / Pos</th><th>CSL主宰宫 / Rules</th><th>CSL星宿主 / Star</th><th>星宿主所在宫 / Star Pos</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  // ───────────────────────── 宫位许诺 ─────────────────────────
+
+  function renderHousePromises(hp) {
+    if (!hp || !hp.length) return '';
+    const rows = hp.map(h => {
+      const mark = h.promise === 'Positive' ? '✅' : h.promise === 'Negative' ? '❌' : '⚠️';
+      return `<tr>
+        <td class="center">${h.house}</td>
+        <td>${planetBadge(h.csl)}</td>
+        <td class="center">${mark} ${esc(h.promise)}</td>
+        <td class="center">${h.favCount}</td>
+        <td class="center">${h.unfavCount}</td>
+      </tr>`;
+    }).join('');
+    return `
+      <section class="card">
+        <div class="card-header"><h2>🎯 宫位许诺 / House Promises</h2></div>
+        <p class="hint">每宫的 CSL 是否许诺该宫事项。基于 XALEN HousePromise。</p>
+        <div class="table-wrap">
+          <table class="kp-table">
+            <thead><tr><th>宫 / House</th><th>CSL</th><th>许诺 / Promise</th><th>吉 / Fav</th><th>凶 / Unfav</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  // ───────────────────────── 事件许诺 ─────────────────────────
+
+  function renderEventPromises(ep) {
+    if (!ep || !ep.length) return '';
+    const eventCn = { Marriage:'婚姻', Job:'工作', Health:'健康', ChildBirth:'子女', Education:'教育', ForeignTravel:'出国', Wealth:'财运', Litigation:'官司' };
+    const rows = ep.map(e => {
+      const mark = e.promised ? '✅ 是' : '❌ 否';
+      return `<tr>
+        <td>${esc(eventCn[e.event] || e.event)} / ${esc(e.event)}</td>
+        <td class="center">${e.primaryHouse}</td>
+        <td>${planetBadge(e.csl)}</td>
+        <td class="center">${mark}</td>
+        <td class="center">${e.favCount}</td>
+        <td class="center">${e.negCount}</td>
+      </tr>`;
+    }).join('');
+    return `
+      <section class="card">
+        <div class="card-header"><h2>💍 事件许诺 / Event Promises</h2></div>
+        <p class="hint">8 类人生事件是否许诺。基于 XALEN KpEvent。</p>
+        <div class="table-wrap">
+          <table class="kp-table">
+            <thead><tr><th>事件 / Event</th><th>主宫 / House</th><th>CSL</th><th>许诺 / Promised</th><th>吉 / Fav</th><th>凶 / Neg</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  // ───────────────────────── 罗睺计都代理 ─────────────────────────
+
+  function renderRahuKetuProxy(proxy) {
+    if (!proxy) return '';
+    const renderNode = (node, name) => {
+      if (!node) return '';
+      const rows = node.levels.map(l => `<tr><td class="center">${l.level}</td><td>${esc(l.source)}</td><td>${planetBadge(l.significator)}</td></tr>`).join('');
+      return `
+        <div style="margin-bottom:12px">
+          <h3 style="color:var(--accent-strong);font-size:13px;margin:8px 0 4px">${name}</h3>
+          <p class="muted" style="font-size:11px;margin:0 0 6px">${esc(node.position)}</p>
+          <table class="kp-table">
+            <thead><tr><th>层级 / Level</th><th>来源 / Source</th><th>代理行星 / Agent</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    };
+    return `
+      <section class="card">
+        <div class="card-header"><h2>🌑 罗睺计都代理分析 / Rahu Ketu Agents</h2></div>
+        <p class="hint">经典四重代理：合相 > 相位 > 星主 > 星座主星</p>
+        ${renderNode(proxy.rahu, '罗睺 / Rahu')}
+        ${renderNode(proxy.ketu, '计都 / Ketu')}
+      </section>
+    `;
+  }
+
+  // ───────────────────────── 行星相位 ─────────────────────────
+
+  function renderAspects(aspects) {
+    if (!aspects) return '';
+    const vedicRows = (aspects.vedic || []).map(a => `<tr><td>${planetBadge(a.from)}</td><td>${esc(a.fromSign)}</td><td>${esc(a.aspect)}</td><td>${planetBadge(a.to)}</td><td>${esc(a.toSign)}</td></tr>`).join('');
+    const westernRows = (aspects.western || []).map(a => `<tr><td>${planetBadge(a.a)}</td><td>${planetBadge(a.b)}</td><td>${esc(a.aspect)}</td><td class="center">${esc(a.orb)}</td></tr>`).join('');
+    return `
+      <section class="card collapsible collapsed">
+        <div class="card-header collapsible" onclick="this.parentElement.classList.toggle('collapsed')">
+          <h2>👁️ 行星相位 / Planetary Aspects</h2>
+          <span class="collapse-icon">▼</span>
+        </div>
+        <h3 style="font-size:12px;color:var(--text-muted);margin:8px 0 4px">印度特殊相位 / Vedic Drishti</h3>
+        <div class="table-wrap"><table class="kp-table">
+          <thead><tr><th>从 / From</th><th>星座 / Sign</th><th>相位 / Aspect</th><th>到 / To</th><th>星座 / Sign</th></tr></thead>
+          <tbody>${vedicRows}</tbody>
+        </table></div>
+        <h3 style="font-size:12px;color:var(--text-muted);margin:12px 0 4px">西方度数相位 / Western Aspects</h3>
+        <div class="table-wrap"><table class="kp-table">
+          <thead><tr><th>行星A</th><th>行星B</th><th>相位 / Aspect</th><th>容许度 / Orb</th></tr></thead>
+          <tbody>${westernRows}</tbody>
+        </table></div>
+      </section>
+    `;
+  }
+
+  // ───────────────────────── 行星状态 ─────────────────────────
+
+  function renderPlanetStates(states) {
+    if (!states || !states.length) return '';
+    const rows = states.map(p => `<tr>
+      <td>${planetBadge(p.name)}</td>
+      <td>${esc(p.state)}</td>
+      <td class="mono">${esc(p.speed)}</td>
+      <td class="center">${p.isCombust ? '🔥 是' : '—'}</td>
+      <td class="center">${p.name === 'Sun' ? '—' : esc(p.distToSun)}</td>
+    </tr>`).join('');
+    return `
+      <section class="card collapsible collapsed">
+        <div class="card-header collapsible" onclick="this.parentElement.classList.toggle('collapsed')">
+          <h2>🔄 行星状态 / Planet States</h2>
+          <span class="collapse-icon">▼</span>
+        </div>
+        <p class="hint">KP 规则：逆行不决定成败，但决定延迟与反复。燃烧不否定结果（水星常燃烧但不受影响）。</p>
+        <div class="table-wrap"><table class="kp-table">
+          <thead><tr><th>行星 / Planet</th><th>状态 / State</th><th>速度 / Speed (°/day)</th><th>燃烧 / Combust</th><th>距日 / Dist to Sun</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      </section>
+    `;
+  }
+
+  // ───────────────────────── 行星尊贵 ─────────────────────────
+
+  function renderPlanetDignity(dignity) {
+    if (!dignity || !dignity.length) return '';
+    const rows = dignity.map(p => `<tr>
+      <td>${planetBadge(p.name)}</td>
+      <td>${esc(p.sign)}</td>
+      <td class="center">${p.absolute.mark} ${esc(p.absolute.text)}</td>
+      <td class="center">${p.relative.mark} ${esc(p.relative.text)}</td>
+    </tr>`).join('');
+    return `
+      <section class="card collapsible collapsed">
+        <div class="card-header collapsible" onclick="this.parentElement.classList.toggle('collapsed')">
+          <h2>👑 行星尊贵 / Planet Dignity</h2>
+          <span class="collapse-icon">▼</span>
+        </div>
+        <p class="hint">KP 废弃打分系统，尊贵仅作背景参考。落陷行星只要 Sub Lord 指向吉宫，依然给结果。</p>
+        <div class="table-wrap"><table class="kp-table">
+          <thead><tr><th>行星 / Planet</th><th>星座 / Sign</th><th>绝对尊贵 / Absolute</th><th>相对尊贵 / Relative</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      </section>
+    `;
+  }
+
   function renderQuickCopy(tag) {
     return `
       <section class="card">
@@ -366,9 +561,16 @@
       renderPlanets(result.planets),
       renderRulingPlanets(result.rulingPlanets, result.input.rpMode),
       renderHouses(result.houses),
+      renderCslAnalysis(result.cslAnalysis),
+      renderHousePromises(result.housePromises),
+      renderEventPromises(result.eventPromises),
       renderDasha(result.dasha),
       renderDashaTimeline(result),
       renderSignificators(result.significators),
+      renderRahuKetuProxy(result.rahuKetuProxy),
+      renderAspects(result.aspects),
+      renderPlanetStates(result.planetStates),
+      renderPlanetDignity(result.planetDignity),
       renderNumberDivination(result.numberDivination),
       renderPanchang(result.panchang)
     ].join('\n');
