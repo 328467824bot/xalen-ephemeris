@@ -169,27 +169,27 @@
   }
 
   function renderSignificators(sigs) {
-    const rows = sigs.map(s => `
-      <tr>
-        <td class="center">${s.house}</td>
-        <td>${esc(s.sign)}</td>
-        <td>${esc(s.lord)}</td>
-        <td>${s.occupants.length ? s.occupants.map(p => planetBadge(p)).join(' ') : '<span class="muted">—</span>'}</td>
-        <td>${s.lordStarLord ? esc(s.lordStarLord) : '<span class="muted">—</span>'}</td>
-        <td>${s.aspectors.length ? s.aspectors.map(p => planetBadge(p)).join(' ') : '<span class="muted">—</span>'}</td>
-        <td>${s.deepStarLord ? esc(s.deepStarLord) : '<span class="muted">—</span>'}</td>
-      </tr>
-    `).join('');
+    // sigs 是 XALEN 5 级结构: [{planet, signifiedHouses, strengthOrder}]
+    const rows = sigs.map(s => {
+      const strength = s.strengthOrder.map(([h, t]) => `${h}:${t}`).join(', ');
+      return `
+        <tr>
+          <td>${planetBadge(s.planet)}</td>
+          <td>${s.signifiedHouses.join(', ')}</td>
+          <td class="mono" style="font-size:11px">${strength}</td>
+        </tr>
+      `;
+    }).join('');
     return `
-      <section class="card collapsible">
+      <section class="card collapsible collapsed">
         <div class="card-header collapsible" onclick="this.parentElement.classList.toggle('collapsed')">
-          <h2>🔍 五层征象星 (Significators)</h2>
+          <h2>🔍 Significators (征象星 — XALEN 5 级 A/B/C/D/E)</h2>
           <span class="collapse-icon">▼</span>
         </div>
-        <p class="hint">优先级：星宿主（第四层） &gt; 同宫星（第二层） &gt; 落座主星（第一层） &gt; 相位星（第三层）</p>
+        <p class="hint">强度顺序：A(StarLord) > B(Occupant) > C(StarLord of Owner) > D(Owner) > E(Aspecting)</p>
         <div class="table-wrap">
           <table class="kp-table">
-            <thead><tr><th>宫</th><th>星座</th><th>宫主</th><th>同宫星</th><th>星宿主</th><th>相位星</th><th>深层星主</th></tr></thead>
+            <thead><tr><th>行星</th><th>征象宫位</th><th>强度明细</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
