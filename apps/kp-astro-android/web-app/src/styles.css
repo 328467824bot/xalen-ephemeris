@@ -464,3 +464,52 @@ main {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ── 历史记录栏 ── */
+.history-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.history-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--text-muted); margin-bottom: 8px;
+}
+.history-list {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 200px; overflow-y: auto;
+}
+.history-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 6px;
+  background: var(--bg-elev); cursor: pointer;
+  transition: background 0.15s;
+}
+.history-item:hover { background: var(--border); }
+.history-title { flex: 1; font-size: 12.5px; color: var(--text); }
+.history-time { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+.history-del { color: var(--danger); }
+
+/* ── LLM 文本区 ── */
+.llm-content {
+  padding: 12px;
+  background: var(--bg-elev);
+  border-radius: 8px;
+  max-height: 600px;
+  overflow-y: auto;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.llm-content .md-body h1, .llm-content .md-body h2, .llm-content .md-body h3 {
+  color: var(--accent-strong); margin: 12px 0 6px;
+}
+.llm-content .md-body h1 { font-size: 15px; }
+.llm-content .md-body h2 { font-size: 14px; }
+.llm-content .md-body h3 { font-size: 13px; }
+.llm-content .md-body p { margin: 6px 0; }
+.llm-content .md-body li { margin: 2px 0; }
+.llm-content .md-body strong { color: var(--text); }
+.llm-content .md-table { width: 100%; font-size: 11px; margin: 8px 0; }
+.llm-content .md-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); }

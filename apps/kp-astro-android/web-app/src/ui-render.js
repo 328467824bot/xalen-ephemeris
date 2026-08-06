@@ -338,7 +338,12 @@
       <section class="card">
         <div class="quick-copy">
           <span class="qct-text">${esc(tag)}</span>
-          <button class="btn" onclick="document.getElementById('btn-copy-quick').click()">📋 复制</button>
+          <button class="btn" id="btn-copy-quick">📋 复制</button>
+        </div>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn" id="btn-copy-md">📋 复制 LLM 文本</button>
+          <button class="btn" id="btn-export-md">💾 导出 .md</button>
+          <button class="btn" id="btn-share">↗ 分享</button>
         </div>
       </section>
     `;
