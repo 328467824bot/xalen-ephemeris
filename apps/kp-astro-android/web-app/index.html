@@ -10,26 +10,15 @@
 </head>
 <body>
 
-  <!-- ═══════════════ 主界面 ═══════════════ -->
+  <!-- ═══════════════ 主页 = 排盘输入 ═══════════════ -->
   <div id="page-home" class="page">
-    <div class="home-center">
-      <div class="home-logo">🌙</div>
-      <h1 class="home-title">KP 即时占卜</h1>
-      <p class="home-subtitle">基于 XALEN 星历 · KP 占星 · LLM 辅助解读</p>
-      <div class="home-buttons">
-        <button id="btn-go-cast" class="btn primary home-btn">🔮 开始排盘</button>
-        <button id="btn-go-history" class="btn home-btn">📋 历史记录</button>
-      </div>
-      <div id="home-engine-status" class="home-status">正在加载…</div>
-    </div>
-  </div>
-
-  <!-- ═══════════════ 排盘页 ═══════════════ -->
-  <div id="page-cast" class="page" style="display:none">
     <header class="page-header">
-      <button class="btn-back" data-back="home">← 返回</button>
-      <span class="page-title">排盘</span>
+      <span class="page-title">🌙 KP 即时占卜</span>
+      <button id="btn-go-history" class="btn" style="padding:4px 10px;font-size:12px">📋 历史</button>
+      <button id="btn-go-log" class="btn" style="padding:4px 10px;font-size:12px">📜 日志</button>
     </header>
+    <div id="home-engine-status" class="home-status"></div>
+    <div id="error-banner"></div>
 
     <div class="page-pills">
       <span class="pill" data-group="aya" data-value="0">Lahiri</span>
@@ -38,27 +27,25 @@
       <span class="pill active" data-group="house" data-value="2">Placidus</span>
     </div>
 
-    <div id="error-banner"></div>
-
     <form id="form-cast" class="form-card">
       <div class="form-grid">
-        <div class="field"><label>年</label><input type="number" id="year" min="1800" max="2200" required></div>
-        <div class="field"><label>月</label><input type="number" id="month" min="1" max="12" required></div>
-        <div class="field"><label>日</label><input type="number" id="day" min="1" max="31" required></div>
-        <div class="field"><label>时</label><input type="number" id="hour" min="0" max="23" required></div>
-        <div class="field"><label>分</label><input type="number" id="minute" min="0" max="59" required></div>
-        <div class="field"><label>秒</label><input type="number" id="second" min="0" max="59" value="0"></div>
-        <div class="field"><label>时区偏移（分钟）</label><input type="number" id="tz" step="15" required><span class="muted" style="font-size:10px">东八区=480</span></div>
-        <div class="field"><label>纬度</label><input type="number" id="lat" step="0.0001" value="31.2304" required></div>
-        <div class="field"><label>经度</label><input type="number" id="lon" step="0.0001" value="121.4737" required></div>
-        <div class="field"><label>性别</label><select id="gender"><option value="male" selected>男</option><option value="female">女</option><option value="">未指定</option></select></div>
+        <div class="field"><label>年 / Year</label><input type="number" id="year" min="1800" max="2200" required></div>
+        <div class="field"><label>月 / Month</label><input type="number" id="month" min="1" max="12" required></div>
+        <div class="field"><label>日 / Day</label><input type="number" id="day" min="1" max="31" required></div>
+        <div class="field"><label>时 / Hour</label><input type="number" id="hour" min="0" max="23" required></div>
+        <div class="field"><label>分 / Min</label><input type="number" id="minute" min="0" max="59" required></div>
+        <div class="field"><label>秒 / Sec</label><input type="number" id="second" min="0" max="59" value="0"></div>
+        <div class="field"><label>时区偏移（分钟）/ TZ Offset (min)</label><input type="number" id="tz" step="1" required><span class="muted" style="font-size:10px">东八区=480</span></div>
+        <div class="field"><label>纬度 / Latitude</label><input type="number" id="lat" step="0.0001" value="31.2304" required></div>
+        <div class="field"><label>经度 / Longitude</label><input type="number" id="lon" step="0.0001" value="121.4737" required></div>
+        <div class="field"><label>性别 / Gender</label><select id="gender"><option value="male" selected>男 / Male</option><option value="female">女 / Female</option><option value="">未指定</option></select></div>
       </div>
       <div class="field field-full" style="margin-top:10px">
-        <label>占问事项</label>
+        <label>占问事项 / Query Topic</label>
         <input type="text" id="topic" placeholder="例如：婚姻 / 工作 / 健康 / 财运">
       </div>
       <div class="field field-full" style="margin-top:10px">
-        <label>数字起卦（任意正整数，取模 249）</label>
+        <label>数字起卦 / Horary Number（任意正整数，取模 249）</label>
         <input type="number" id="number" min="1" placeholder="留空则不使用数字起卦">
         <span id="number-mapping" class="muted" style="font-size:11px;margin-top:2px"></span>
       </div>
@@ -66,38 +53,53 @@
         <button type="button" id="btn-now" class="btn">⏱ 当前时间</button>
         <button type="button" id="btn-gps" class="btn">📍 GPS 定位</button>
       </div>
-      <button type="submit" id="btn-cast" class="btn primary" style="margin-top:10px;width:100%;padding:13px;font-size:15px">立即排盘</button>
+      <button type="submit" id="btn-cast" class="btn primary" style="margin-top:10px;width:100%;padding:14px;font-size:16px">🔮 立即排盘</button>
     </form>
+  </div>
 
+  <!-- ═══════════════ 结果页（二级） ═══════════════ -->
+  <div id="page-result" class="page" style="display:none">
+    <header class="page-header">
+      <button class="btn-back" data-back="home">← 返回</button>
+      <span class="page-title">排盘结果</span>
+    </header>
     <div id="result"></div>
-
     <div id="llm-section" class="card" style="display:none">
       <div class="card-header">
-        <h2>📝 LLM 解读文本</h2>
+        <h2>📝 LLM 解读文本 / LLM Text</h2>
         <button id="btn-toggle-llm" class="btn" style="padding:4px 10px;font-size:11px">展开/收起</button>
       </div>
       <div id="llm-content" class="llm-content"></div>
     </div>
   </div>
 
-  <!-- ═══════════════ 历史记录页 ═══════════════ -->
+  <!-- ═══════════════ 历史记录页（二级） ═══════════════ -->
   <div id="page-history" class="page" style="display:none">
     <header class="page-header">
       <button class="btn-back" data-back="home">← 返回</button>
-      <span class="page-title">历史记录</span>
+      <span class="page-title">历史记录 / History</span>
       <button id="btn-clear-history" class="btn" style="padding:4px 10px;font-size:11px">清空</button>
     </header>
     <div id="history-list" class="history-page-list"></div>
   </div>
 
-  <!-- 底部操作栏（排盘结果页才显示） -->
+  <!-- ═══════════════ 日志页（二级） ═══════════════ -->
+  <div id="page-log" class="page" style="display:none">
+    <header class="page-header">
+      <button class="btn-back" data-back="home">← 返回</button>
+      <span class="page-title">运行日志 / Log</span>
+      <button id="btn-copy-log" class="btn" style="padding:4px 10px;font-size:11px">📋 复制</button>
+    </header>
+    <div id="log-content" class="log-content"></div>
+  </div>
+
+  <!-- 底部操作栏（结果页才显示） -->
   <div id="bottom-bar" class="bottom-bar" style="display:none">
     <button id="btn-bar-recast" class="btn">🔄 重新排盘</button>
     <button id="btn-bar-copy-llm" class="btn primary">📋 复制 LLM 文本</button>
   </div>
 
   <div id="toast"></div>
-
   <script src="./src/xalen-stub.js"></script>
   <script src="./src/xalen-bridge.js"></script>
   <script src="./src/kp-engine.js"></script>

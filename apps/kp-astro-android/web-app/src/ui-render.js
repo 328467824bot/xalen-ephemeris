@@ -65,7 +65,7 @@
     const houseName = m.houseSystem === 2 ? 'Placidus' : (m.houseSystem === 0 ? 'Whole-Sign' : `#${m.houseSystem}`);
     return `
       <section class="card">
-        <div class="card-header"><h2>📊 排盘参数与天文元数据</h2></div>
+        <div class="card-header"><h2>📊 排盘参数与天文元数据 / Meta Data</h2></div>
         <div class="kv-grid">
           <div><span class="k">占问时间</span><span class="v">${inp.year}-${pad(inp.month)}-${pad(inp.day)} ${pad(inp.hour)}:${pad(inp.minute)} UTC${inp.tzOffsetMin>=0?'+':''}${inp.tzOffsetMin/60}</span></div>
           <div><span class="k">地点</span><span class="v">${inp.lat.toFixed(4)}°N, ${inp.lon.toFixed(4)}°E</span></div>
@@ -84,7 +84,7 @@
   function renderAscendant(asc) {
     return `
       <section class="card">
-        <div class="card-header"><h2>🎯 上升点 (Ascendant)</h2></div>
+        <div class="card-header"><h2>🎯 上升点 / Ascendant</h2></div>
         <div class="kv-grid">
           <div><span class="k">经度</span><span class="v mono">${fmtDeg(asc.longitude)}</span></div>
           <div><span class="k">星座</span><span class="v">${esc(asc.rashiName)} <span class="muted">(主星 ${planetBadge(asc.rashiLord)})</span></span></div>
@@ -113,7 +113,7 @@
     }).join('');
     return `
       <section class="card">
-        <div class="card-header"><h2>🪐 行星位置 <span class="muted" style="font-weight:400;font-size:12px">(Sidereal)</span></h2></div>
+        <div class="card-header"><h2>🪐 行星位置 / Planet Positions (Sidereal)
         <div class="table-wrap">
           <table class="kp-table">
             <thead>
@@ -138,7 +138,7 @@
     return `
       <section class="card">
         <div class="card-header">
-          <h2>⚖️ 统治星 (Ruling Planets)</h2>
+          <h2>⚖️ 统治星 / Ruling Planets</h2>
           <div class="rp-toggle">
             <button class="btn ${rpMode!=='extended7'?'primary':''}" data-rp-mode="ksk5" style="padding:3px 8px;font-size:11px">5 颗</button>
             <button class="btn ${rpMode==='extended7'?'primary':''}" data-rp-mode="extended7" style="padding:3px 8px;font-size:11px">7 颗</button>
@@ -163,7 +163,7 @@
     `).join('');
     return `
       <section class="card">
-        <div class="card-header"><h2>🏛️ 宫头位置 <span class="muted" style="font-weight:400;font-size:12px">(Cuspal)</span></h2></div>
+        <div class="card-header"><h2>🏛️ 宫头位置 / Cuspal Positions
         <p class="hint">宫头子主 (CSL) 是判断宫位事项是否成真的最终决定星。</p>
         <div class="table-wrap">
           <table class="kp-table">
@@ -190,7 +190,7 @@
     return `
       <section class="card collapsible collapsed">
         <div class="card-header collapsible" onclick="this.parentElement.classList.toggle('collapsed')">
-          <h2>🔍 Significators (征象星 — XALEN 5 级 A/B/C/D/E)</h2>
+          <h2>🔍 征象星 / Significators (A/B/C/D/E)</h2>
           <span class="collapse-icon">▼</span>
         </div>
         <p class="hint">强度顺序：A(StarLord) > B(Occupant) > C(StarLord of Owner) > D(Owner) > E(Aspecting)</p>
@@ -309,7 +309,7 @@
     if (!nd) return '';
     return `
       <section class="card">
-        <div class="card-header"><h2>🔢 数字起卦映射 <span class="muted" style="font-weight:400;font-size:12px">(KP ${nd.number}/249)</span></h2></div>
+        <div class="card-header"><h2>🔢 数字起卦 / Horary Number <span class="muted" style="font-weight:400;font-size:12px">(KP ${nd.number}/249)</span></h2></div>
         <div class="kv-grid">
           <div><span class="k">映射经度</span><span class="v mono">${fmtDeg(nd.mappedDegree)}</span></div>
           <div><span class="k">星座</span><span class="v">${esc(nd.rashi)}</span></div>
@@ -326,7 +326,7 @@
     return `
       <section class="card collapsible collapsed">
         <div class="card-header collapsible" onclick="this.parentElement.classList.toggle('collapsed')">
-          <h2>🌗 Panchang</h2>
+          <h2>🌗 五要素 / Panchang</h2>
           <span class="collapse-icon">▼</span>
         </div>
         <div class="kv-grid">
